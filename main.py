@@ -20,6 +20,23 @@ EXT_FONT_MAP = {
     "Ã": (32, 6), "Õ": (36, 6), "À": (40, 6), "Ç": (44, 6),
 }
 
+class Character():
+    def __init__(self):
+        self.name = "Hero"
+        self.inventory = {
+            "utensilios": [],
+            "armas": [],
+            "armaduras": [],
+            "comuns": []
+        }
+        self.status = {
+            "vida": 10,
+            "forca": 1,
+            "defesa": 1,
+            "nível": 1,
+            "experiencia": 0
+        }
+
 class App:
     def __init__(self):
         px.init(WIDTH, HEIGHT, title="TEXT ADVENTURE")
@@ -32,35 +49,69 @@ class App:
         self.input_buf = ""
         self.ext_map = EXT_FONT_MAP
 
+        # Mapeamento de itens
+        self.item_map = {
+            "concha": {"tipo": "comum", "desc": "Uma concha do mar."},
+            "galho": {"tipo": "arma", "desc": "Um galho seco."},
+            "tocha": {"tipo": "utensilio", "desc": "Uma tocha acesa.", "efeito": "ilumina o ambiente"},
+        }
+
         # Mundo simples (salas, saidas, itens, cena)
         self.rooms = {
+            "menu": {
+                "desc": "Voce esta no menu principal.",
+                "exits": {},
+                "items": [],
+                "scene": "menu",
+            },
             "praia": {
-                "desc": "Voce esta em uma praia silenciosa. O mar murmura ao sul.",
+                "desc": "Voce esta em uma praia silenciosa. O mar murmura ao sul. A luz da lua reflete nas ondas do mar a sua frente.",
                 "exits": {"norte": "floresta", "leste": "caverna"},
                 "items": ["concha"],
                 "scene": "praia",
             },
             "floresta": {
-                "desc": "Arvores densas bloqueiam parte da luz. Ha um cheiro de terra molhada.",
+                "desc": "Arvores densas bloqueiam parte da luz noturna. Ha um cheiro de terra molhada.",
                 "exits": {"sul": "praia"},
-                "items": [],
+                "items": ["galho"],
                 "scene": "floresta",
             },
             "caverna": {
                 "desc": "Uma caverna escura e fria. Ecoa o som de gotas.",
-                "exits": {"oeste": "praia"},
+                "exits": {"oeste": "praia", "entrada": "interior da caverna"},
                 "items": ["tocha"],
                 "scene": "caverna",
             },
+            "interior da caverna": {
+                "desc": "Voce esta dentro de uma caverna escura. Ha um brilho fraco vindo de uma abertura ao norte.",
+                "exits": {"norte": "planicie"},
+                "items": [],
+                "scene": "",
+            },
+            "planicie": {
+                "desc": "Voce chegou a uma planicie aberta com grama rala. O ceu estrelado se estende acima de voce.",
+                "exits": {"sul": "interior da caverna", "oeste": "floresta", "norte": "leste da vila"},
+                "items": [],
+                "scene": "",
+            },
+            "leste da vila": {
+                "desc": "Voce chegou ao leste da vila. Casas simples se alinham ao longo da estrada de terra.",
+                "exits": {"sul": "planicie", "oeste": "vila"},
+                "items": [],
+                "scene": "",
+            },
+
         }
-        self.room = "praia"
-        self.inventory = []
+        self.room = "menu"
+        self.char = Character()
+        # Estado: aguardando o nome no menu
+        self.awaiting_name = True
 
         # Largura maxima de caracteres por linha no console
         self.max_cols = (WIDTH - 12) // CHAR_W  # margem de 6px de cada lado
 
         # Mensagem inicial
-        self.say("Bem-vindo! Digite 'ajuda'.")
+        self.say("Bem-vindo! Digite seu nome e pressione Enter. (Use 'ajuda' para dicas)")
         self.describe_room()
 
         px.run(self.update, self.draw)
@@ -93,37 +144,97 @@ class App:
             self.input_buf = ""
 
     def process_command(self, cmd: str):
-        if cmd in ("ajuda", "help", "?"):
-            self.say("Comandos: olhar | ir <norte/sul/leste/oeste> | pegar <item> | inventario | limpar")
+        if self.room == "menu":
+            # Primeiro, tratar entrada do nome
+            if self.awaiting_name:
+                if cmd in ("ajuda", "help", "?"):
+                    self.say("Digite um nome e pressione Enter. Ou 'entrar' para manter 'Hero'.")
+                    return
+                if cmd == "entrar":
+                    self.awaiting_name = False
+                    self.room = "praia"
+                    self.describe_room()
+                    return
+                if cmd and cmd not in ("sair", "exit", "quit"):
+                    self.char.name = cmd
+                    self.awaiting_name = False
+                    self.say(f"Nome definido: {self.char.name}. Digite 'entrar' para comecar.")
+                    return
+                # Se vazio, apenas ignore
+                return
+
+            # Menu sem estar aguardando nome
+            if cmd in ("ajuda", "help", "?"):
+                self.say("Menu: entrar | nome <novo> | ajuda")
+                return
+            if cmd.startswith("nome "):
+                _, _, newname = cmd.partition(" ")
+                if newname:
+                    self.char.name = newname
+                    self.say(f"Nome alterado para {self.char.name}.")
+                else:
+                    self.say("Use: nome <novo_nome>")
+                return
+            if cmd == "entrar":
+                self.room = "praia"
+                self.describe_room()
+                return
+            self.say(f"Bem-vindo, {self.char.name}! Digite 'entrar' para comecar.")
             return
 
+        # Ajuda
+        if cmd in ("ajuda", "help", "?"):
+            self.say("Comandos: olhar | ir <norte/sul/leste/oeste> | pegar <item> | " \
+            "inventario | limpar | status")
+            return
+        # Olhar
         if cmd in ("olhar", "look", "l"):
             self.describe_room()
             return
-
+        # Ir
         if cmd.startswith("ir ") or cmd.startswith("go "):
             _, _, rest = cmd.partition(" ")
             self.go(rest.strip())
             return
-
+        # Pegar
         if cmd.startswith("pegar ") or cmd.startswith("take "):
             _, _, item = cmd.partition(" ")
             self.take(item.strip())
             return
-
+        # Inventario
         if cmd in ("inventario", "inv", "i"):
-            if self.inventory:
-                self.say("Voce carrega: " + ", ".join(self.inventory))
+            if self.char.inventory:
+                self.say("Voce carrega: ")
+                self.say("Utensilios: " + ", ".join(self.char.inventory["utensilios"]) if self.char.inventory["utensilios"] else "Utensilios: vazio")
+                self.say("Armas: " + ", ".join(self.char.inventory["armas"]) if self.char.inventory["armas"] else "Armas: vazio")
+                self.say("Armaduras: " + ", ".join(self.char.inventory["armaduras"]) if self.char.inventory["armaduras"] else "Armaduras: vazio")
+                self.say("Comuns: " + ", ".join(self.char.inventory["comuns"]) if self.char.inventory["comuns"] else "Comuns: vazio")
             else:
                 self.say("Voce nao carrega nada.")
             return
-
+        # Limpar
         if cmd in ("limpar", "clear", "cls"):
             self.history.clear()
             return
+        # Sair
+        if cmd in ("sair", "exit", "quit"):
+            self.say("Obrigado por jogar!")
+            px.quit()
+        # Status
+        if cmd in ("status", "info"):
+            self.say(f"Nome: {self.char.name}")
+            self.say(f"Localizacao: {self.room}")
+            self.say(f"Inventario: {self.char.inventory if self.char.inventory else 'vazio'}")
+            self.say(f"Status: {self.char.status}")
+            return
+        
+        if cmd.startswith("usar ") or cmd.startswith("use "):
+            _, _, item = cmd.partition(" ")
+            self.use(item.strip())
+            return
 
         self.say("Nao entendi. Digite 'ajuda'.")
-
+    # Descrição dos ambientes
     def describe_room(self):
         r = self.rooms[self.room]
         self.say(r["desc"])
@@ -131,7 +242,7 @@ class App:
             self.say("Ao redor: " + ", ".join(r["items"]))
         if r["exits"]:
             self.say("Saidas: " + ", ".join(sorted(r["exits"].keys())))
-
+    # Mover-se entre os ambientes
     def go(self, direction: str):
         r = self.rooms[self.room]
         if direction in r["exits"]:
@@ -139,18 +250,41 @@ class App:
             self.describe_room()
         else:
             self.say("Voce nao pode ir por ai.")
-
+    # Pegar itens
     def take(self, item: str):
         if not item:
             self.say("Pegar o que?")
             return
         r = self.rooms[self.room]
+        i = self.char.inventory
         if item in r["items"]:
             r["items"].remove(item)
-            self.inventory.append(item)
+            if self.item_map[item]["tipo"] == "utensilio":
+                i["utensilios"].append(item)
+            elif self.item_map[item]["tipo"] == "arma":
+                i["armas"].append(item)
+            elif self.item_map[item]["tipo"] == "armadura":
+                i["armaduras"].append(item)
+            else:
+                i["comuns"].append(item)
             self.say(f"Voce pegou a {item}.")
         else:
             self.say("Nao vejo isso aqui.")
+    
+    # Usar Itens
+    def use(self, item: str):
+        if not item:
+            self.say("Usar o que?")
+            return
+        i = self.char.inventory
+        if item in i["utensilios"]:
+            self.say(f"Voce usou o {item}.")
+            if item in self.item_map:
+                effect = self.item_map[item].get("efeito")
+                if effect:
+                    self.say(f"O efeito do item {item} foi ativado: {effect}")
+        else:
+            self.say("Nao pode usar isso.")
 
     # ---------------- Desenho ----------------
     def draw(self):
@@ -167,8 +301,9 @@ class App:
 
     def draw_scene(self, x, y, w, h):
         # Ceu e "chao" base
-        px.rect(x, y, w, h, 1)              # azul escuro (ceu)
-        px.rect(x, y + h - 30, w, 30, 3)    # verde (chao)
+        if self.awaiting_name and self.room == "menu" or self.room != "interior da caverna":
+            px.rect(x, y, w, h, 1)              # azul escuro (ceu)
+            px.rect(x, y + h - 30, w, 30, 3)    # verde (chao)
 
         # Desenhos por cena (rapidos)
         scene = self.rooms[self.room]["scene"]
@@ -176,16 +311,20 @@ class App:
         base = y + h - 30
 
         if scene == "praia":
-            px.circ(cx + 70, y + 20, 10, 10)   # sol (amarelo)
+            px.circ(cx + 70, y + 20, 10, 13)
             px.rect(x, base - 20, w, 20, 12)   # mar (azul claro)
+            px.rect(x, y + h - 30, w, 30, 15)   # areia (bege)
         elif scene == "floresta":
             for i in range(5):
                 tx = x + 20 + i * 50
                 px.rect(tx, base - 25, 6, 25, 4)   # tronco (marrom)
-                px.tri(tx - 10, base - 25, tx + 3, base - 50, tx + 16, base - 25, 11)  # copa (verde claro)
+                px.tri(tx - 10, base - 10, tx + 3, base - 75, tx + 16, base - 10, 11)  # copa (verde claro)
         elif scene == "caverna":
-            px.circ(cx, base - 15, 50, 5)
-            px.circ(cx, base - 15, 45, 0)
+            px.tri(cx - 70, base, cx - 40, base - 70, cx - 25, base, 0)
+            px.tri(cx + 25, base, cx + 40, base - 70, cx + 70, base, 0)
+            px.tri(cx - 35, base, cx, base - 90, cx + 35, base, 0)
+            px.circ(cx, base - 20, 45, 0)
+            px.rect(x, y + h - 30, w, 30, 3)
             px.rect(x, base, w, 30, 3)
 
     def draw_console(self, x, y, w, h):
@@ -250,7 +389,7 @@ class App:
             px.KEY_M:"m", px.KEY_N:"n", px.KEY_O:"o", px.KEY_P:"p",
             px.KEY_Q:"q", px.KEY_R:"r", px.KEY_S:"s", px.KEY_T:"t",
             px.KEY_U:"u", px.KEY_V:"v", px.KEY_W:"w", px.KEY_X:"x",
-            px.KEY_Y:"y", px.KEY_Z:"z",
+            px.KEY_Y:"y", px.KEY_Z:"z"
         }
 
     def _digit_space_keymap(self):
