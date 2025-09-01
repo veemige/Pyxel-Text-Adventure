@@ -1,4 +1,5 @@
 import pyxel as px
+import random
 
 # Constantes de layout
 WIDTH, HEIGHT = 320, 240
@@ -23,6 +24,7 @@ EXT_FONT_MAP = {
 class Character():
     def __init__(self):
         self.name = "Hero"
+        self.visited_rooms = set()
         self.inventory = {
             "utensilios": [],
             "armas": [],
@@ -31,11 +33,69 @@ class Character():
         }
         self.status = {
             "vida": 10,
+            "vida_max": 10,     # novo: vida máxima
             "forca": 1,
             "defesa": 1,
-            "nível": 1,
-            "experiencia": 0
+            "nivel": 1,
+            "experiencia": 0,
+            "pontos": 0,        # novo: pontos de habilidade
         }
+
+        
+
+    # novo: XP necessário para próximo nível (progressão linear simples)
+    def xp_to_next(self) -> int:
+        lvl = self.status["nivel"]
+        return 10 + (lvl - 1) * 10
+
+    # novo: ganhar XP e aplicar level ups em cascata
+    def gain_xp(self, amount: int):
+        msgs = []
+        if amount <= 0:
+            return msgs
+        self.status["experiencia"] += amount
+        msgs.append(f"+{amount} XP.")
+        while self.status["experiencia"] >= self.xp_to_next():
+            need = self.xp_to_next()
+            self.status["experiencia"] -= need
+            self.status["nivel"] += 1
+            self.status["pontos"] += 2
+            self.status["vida_max"] += 2
+            self.status["vida"] = self.status["vida_max"]
+            msgs.append(f"Subiu para o nivel {self.status['nivel']}! +2 pontos. Vida +2 e restaurada.")
+        return msgs
+
+    # novo: alocar pontos em atributos
+    def allocate_points(self, attr: str, qty: int):
+        attr = attr.lower()
+        if attr in ("vida", "hp"):
+            target = "vida"
+        elif attr == "forca":
+            target = "forca"
+        elif attr == "defesa":
+            target = "defesa"
+        else:
+            return False, "Atributo invalido. Use vida, forca ou defesa."
+
+        if qty <= 0:
+            return False, "Quantidade deve ser positiva."
+
+        pts = self.status["pontos"]
+        if qty > pts:
+            return False, f"Você so tem {pts} ponto(s)."
+
+        self.status["pontos"] -= qty
+        if target == "vida":
+            self.status["vida_max"] += qty
+            # recupera a mesma quantidade na vida atual (sem passar do máximo)
+            self.status["vida"] = min(self.status["vida"] + qty, self.status["vida_max"])
+        else:
+            self.status[target] += qty
+
+        return True, f"{qty} ponto(s) atribuido(s) em {target}. Restantes: {self.status['pontos']}."
+
+    def has_visited(self, room: str) -> bool:
+        return room in self.visited_rooms
 
 class App:
     def __init__(self):
@@ -52,8 +112,9 @@ class App:
         # Mapeamento de itens
         self.item_map = {
             "concha": {"tipo": "comum", "desc": "Uma concha do mar."},
-            "galho": {"tipo": "arma", "desc": "Um galho seco."},
+            "galho": {"tipo": "arma", "desc": "Um galho seco.", "dano": 0.5},
             "tocha": {"tipo": "utensilio", "desc": "Uma tocha acesa.", "efeito": "ilumina o ambiente"},
+            "adaga": {"tipo": "arma", "desc": "Uma adaga afiada.", "dano": 1.0}
         }
 
         # Mundo simples (salas, saidas, itens, cena)
@@ -63,49 +124,64 @@ class App:
                 "exits": {},
                 "items": [],
                 "scene": "menu",
+                "region": "menu",
+                "encounters_enabled": False,
             },
             "praia": {
                 "desc": "Voce esta em uma praia silenciosa. O mar murmura ao sul. A luz da lua reflete nas ondas do mar a sua frente.",
                 "exits": {"norte": "floresta", "leste": "caverna"},
                 "items": ["concha"],
                 "scene": "praia",
+                "region": "praia",
+                "encounters_enabled": True,
             },
             "floresta": {
                 "desc": "Arvores densas bloqueiam parte da luz noturna. Ha um cheiro de terra molhada.",
                 "exits": {"sul": "praia"},
                 "items": ["galho"],
                 "scene": "floresta",
+                "region": "floresta",
+                "encounters_enabled": True,
             },
             "caverna": {
                 "desc": "Uma caverna escura e fria. Ecoa o som de gotas.",
                 "exits": {"oeste": "praia", "entrada": "interior da caverna"},
                 "items": ["tocha"],
                 "scene": "caverna",
+                "region": "caverna",
+                "encounters_enabled": True,
             },
             "interior da caverna": {
                 "desc": "Voce esta dentro de uma caverna escura. Ha um brilho fraco vindo de uma abertura ao norte.",
                 "exits": {"norte": "planicie"},
                 "items": [],
                 "scene": "",
+                "region": "caverna",
+                "encounters_enabled": True,
             },
             "planicie": {
                 "desc": "Voce chegou a uma planicie aberta com grama rala. O ceu estrelado se estende acima de voce.",
                 "exits": {"sul": "interior da caverna", "oeste": "floresta", "norte": "leste da vila"},
                 "items": [],
                 "scene": "",
+                "region": "planicie",
+                "encounters_enabled": True,
             },
             "leste da vila": {
                 "desc": "Voce chegou ao leste da vila. Casas simples se alinham ao longo da estrada de terra.",
                 "exits": {"sul": "planicie", "oeste": "vila"},
                 "items": [],
                 "scene": "",
+                "region": "vila",
+                "encounters_enabled": True,
             },
-
         }
         self.room = "menu"
         self.char = Character()
-        # Estado: aguardando o nome no menu
         self.awaiting_name = True
+
+        # novo: salas visitadas (para XP na primeira visita)
+        self.visited_rooms = set()
 
         # Largura maxima de caracteres por linha no console
         self.max_cols = (WIDTH - 12) // CHAR_W  # margem de 6px de cada lado
@@ -114,11 +190,61 @@ class App:
         self.say("Bem-vindo! Digite seu nome e pressione Enter. (Use 'ajuda' para dicas)")
         self.describe_room()
 
+        # -------- Sistema de encontros --------
+        # Probabilidade base de encontro aleatório ao entrar em uma sala habilitada
+        self.encounter_chance = 0.25
+        # Encontros cadastrados (data-driven)
+        # Cada encontro pode restringir por 'rooms' e/ou 'regions', e por faixa de nível
+        self.encounters = {
+            "mercador_costeiro": {
+                "type": "npc",
+                "regions": ["praia", "planicie", "vila"],
+                "min_level": 1,
+                "weight": 1,
+            },
+            "caranguejo": {
+                "type": "enemy",
+                "regions": ["praia"],
+                "min_level": 1,
+                "max_level": 3,
+                "weight": 3,
+                "enemy": {"name": "Caranguejo", "base_hp": 4, "atk": 1},
+            },
+            "lobo": {
+                "type": "enemy",
+                "regions": ["floresta", "planicie"],
+                "min_level": 2,
+                "weight": 2,
+                "enemy": {"name": "Lobo", "base_hp": 6, "atk": 2},
+            },
+            "morcego": {
+                "type": "enemy",
+                "regions": ["caverna"],
+                "min_level": 1,
+                "weight": 2,
+                "enemy": {"name": "Morcego", "base_hp": 3, "atk": 1},
+            },
+        }
+        # Encontros programados por sala (ex.: 1a vez que entra)
+        self.scripted_by_room = {
+            "interior da caverna": [
+                {"id": "minero_intro", "type": "npc", "once": True, "min_level": 1, "handler": "script_miner"},
+            ]
+        }
+        # Flags para encontros programados (evitar repetir 'once')
+        self.encounter_flags = set()
+        # --------------------------------------
+
         px.run(self.update, self.draw)
 
     # ---------------- Logica ----------------
     def update(self):
         self.handle_text_input()
+        if self.char.status["vida"] <= 0:
+            self.say("Você morreu!")
+            self.say("Aperte [ENTER] para reiniciar.")
+            if px.btnp(px.KEY_ENTER):
+                px.reset()
 
     def handle_text_input(self):
         # Letras a-z
@@ -143,6 +269,9 @@ class App:
                 self.process_command(cmd)
             self.input_buf = ""
 
+        if px.btnp(px.KEY_LSHIFT):
+            self.char.gain_xp(10)
+
     def process_command(self, cmd: str):
         if self.room == "menu":
             # Primeiro, tratar entrada do nome
@@ -152,8 +281,8 @@ class App:
                     return
                 if cmd == "entrar":
                     self.awaiting_name = False
-                    self.room = "praia"
-                    self.describe_room()
+                    # Entrar no jogo pela primeira vez
+                    self.enter_room("praia")
                     return
                 if cmd and cmd not in ("sair", "exit", "quit"):
                     self.char.name = cmd
@@ -176,16 +305,17 @@ class App:
                     self.say("Use: nome <novo_nome>")
                 return
             if cmd == "entrar":
-                self.room = "praia"
-                self.describe_room()
+                self.enter_room("praia")
                 return
             self.say(f"Bem-vindo, {self.char.name}! Digite 'entrar' para comecar.")
             return
 
         # Ajuda
         if cmd in ("ajuda", "help", "?"):
-            self.say("Comandos: olhar | ir <norte/sul/leste/oeste> | pegar <item> | " \
-            "inventario | limpar | status")
+            self.say(
+                "Comandos: olhar | ir <norte/sul/leste/oeste> | pegar <item> | "
+                "inventario | pontos | atribuir <vida|forca|defesa> <qtd> | limpar | status"
+            )
             return
         # Olhar
         if cmd in ("olhar", "look", "l"):
@@ -212,6 +342,40 @@ class App:
             else:
                 self.say("Voce nao carrega nada.")
             return
+
+        if cmd in ("visitadas", "visited"):
+            if self.char.visited_rooms:
+                self.say("Salas visitadas: " + ", ".join(self.char.visited_rooms))
+            else:
+                self.say("Voce nao visitou nenhuma sala.")
+            return
+        # Debug/inspecao de encontros
+        if cmd == "encontros":
+            r = self.rooms[self.room]
+            region = r.get("region")
+            enabled = r.get("encounters_enabled", False)
+            pool = self._eligible_encounters()
+            ids = [eid for eid, _ in pool]
+            self.say(f"Encontros aqui: {'ON' if enabled else 'OFF'} | Regiao: {region}")
+            self.say("Elegiveis: " + (", ".join(ids) if ids else "nenhum"))
+            self.say(f"Chance base: {self.encounter_chance:.2f}")
+            return
+        if cmd.startswith("forcar encontro "):
+            _, _, eid = cmd.partition("forcar encontro ")
+            eid = eid.strip()
+            if eid:
+                self.trigger_encounter(eid)
+            else:
+                self.say("Use: forcar encontro <id>")
+            return
+        if cmd.startswith("chance "):
+            try:
+                val = float(cmd.split()[1])
+                self.encounter_chance = max(0.0, min(1.0, val))
+                self.say(f"Chance de encontro ajustada para {self.encounter_chance:.2f}")
+            except Exception:
+                self.say("Use: chance <valor entre 0 e 1>")
+            return
         # Limpar
         if cmd in ("limpar", "clear", "cls"):
             self.history.clear()
@@ -224,10 +388,18 @@ class App:
         if cmd in ("status", "info"):
             self.say(f"Nome: {self.char.name}")
             self.say(f"Localizacao: {self.room}")
-            self.say(f"Inventario: {self.char.inventory if self.char.inventory else 'vazio'}")
-            self.say(f"Status: {self.char.status}")
+            lvl = self.char.status["nivel"]
+            xp = self.char.status["experiencia"]
+            to_next = self.char.xp_to_next()
+            pts = self.char.status["pontos"]
+            vida = self.char.status["vida"]
+            vmax = self.char.status["vida_max"]
+            forca = self.char.status["forca"]
+            defesa = self.char.status["defesa"]
+            self.say(f"Nível {lvl} | XP {xp}/{to_next} | Pontos {pts}")
+            self.say(f"Atributos: Vida {vida}/{vmax}, Forca {forca}, Defesa {defesa}")
             return
-        
+
         if cmd.startswith("usar ") or cmd.startswith("use "):
             _, _, item = cmd.partition(" ")
             self.use(item.strip())
@@ -246,8 +418,7 @@ class App:
     def go(self, direction: str):
         r = self.rooms[self.room]
         if direction in r["exits"]:
-            self.room = r["exits"][direction]
-            self.describe_room()
+            self.enter_room(r["exits"][direction])
         else:
             self.say("Voce nao pode ir por ai.")
     # Pegar itens
@@ -268,6 +439,9 @@ class App:
             else:
                 i["comuns"].append(item)
             self.say(f"Voce pegou a {item}.")
+            # novo: XP ao pegar item
+            for m in self.char.gain_xp(3):
+                self.say(m)
         else:
             self.say("Nao vejo isso aqui.")
     
@@ -285,6 +459,107 @@ class App:
                     self.say(f"O efeito do item {item} foi ativado: {effect}")
         else:
             self.say("Nao pode usar isso.")
+
+    # ------- Entrada em sala (concede XP apenas na primeira vez) -------
+    def enter_room(self, new_room: str):
+        self.room = new_room
+        if not self.char.has_visited(new_room):
+            self.char.visited_rooms.add(new_room)
+            for m in self.char.gain_xp(2):
+                self.say(m)
+        self.describe_room()
+        # Encontros programados (por sala)
+        self._maybe_trigger_scripted_encounter()
+        # Encontro aleatório (se habilitado e sorte permitir)
+        self._maybe_trigger_random_encounter()
+
+    # ----------------- Encontros: núcleo -----------------
+    def _eligible_encounters(self):
+        room = self.room
+        region = self.rooms[room].get("region")
+        lvl = self.char.status["nivel"]
+        pool = []
+        for eid, e in self.encounters.items():
+            rooms = e.get("rooms")
+            regions = e.get("regions")
+            if rooms and room not in rooms:
+                continue
+            if regions and region not in regions:
+                continue
+            if lvl < e.get("min_level", 1):
+                continue
+            if lvl > e.get("max_level", 999):
+                continue
+            pool.append((eid, e.get("weight", 1)))
+        return pool
+    
+    def _maybe_trigger_random_encounter(self):
+        r = self.rooms[self.room]
+        if not r.get("encounters_enabled", False):
+            return
+        if random.random() >= self.encounter_chance:
+            return
+        pool = self._eligible_encounters()
+        if not pool:
+            return
+        eid = self._weighted_choice(pool)
+        self.trigger_encounter(eid)
+    
+    def _maybe_trigger_scripted_encounter(self):
+        room = self.room
+        entries = self.scripted_by_room.get(room, [])
+        if not entries:
+            return
+        lvl = self.char.status["nivel"]
+        for e in entries:
+            flag = f"script:{e['id']}"
+            if e.get("once") and flag in self.encounter_flags:
+                continue
+            if lvl < e.get("min_level", 1):
+                continue
+            handler = e.get("handler")
+            if handler and hasattr(self, handler):
+                getattr(self, handler)()
+            else:
+                self.say(f"Um evento ocorre: {e['id']}")
+            if e.get("once"):
+                self.encounter_flags.add(flag)
+    
+    def trigger_encounter(self, encounter_id: str):
+        e = self.encounters.get(encounter_id)
+        if not e:
+            self.say(f"Encontro '{encounter_id}' nao encontrado.")
+            return
+        if e["type"] == "npc":
+            self._enc_npc(encounter_id, e)
+        elif e["type"] == "enemy":
+            self._enc_enemy(encounter_id, e)
+        else:
+            self.say(f"Encontro: {encounter_id}")
+    
+    def _enc_npc(self, eid, e):
+        self.say("Um mercador aparece na estrada, oferecendo seus produtos.")
+        self.say("Dica: voce pode implementar aqui um menu de compra ('comprar <item>').")
+    
+    def _enc_enemy(self, eid, e):
+        data = e.get("enemy", {})
+        name = data.get("name", "Inimigo")
+        lvl = self.char.status["nivel"]
+        self.say(f"Um {name} salta a sua frente! (area: {self.rooms[self.room].get('region')}, nivel {lvl})")
+        self.say("Dica: daqui voce pode chamar um loop de combate.")
+    
+    def script_miner(self):
+        self.say("Um mineiro cansado surge das sombras: 'Cuidado lá dentro.'")
+    
+    def _weighted_choice(self, items):
+        total = sum(w for _, w in items)
+        r = random.uniform(0, total)
+        acc = 0
+        for v, w in items:
+            acc += w
+            if r <= acc:
+                return v
+        return items[-1][0]
 
     # ---------------- Desenho ----------------
     def draw(self):
