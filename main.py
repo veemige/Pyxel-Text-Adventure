@@ -184,6 +184,20 @@ class App:
         self.room = "menu"
         self.awaiting_name = True
 
+        # Posicoes de itens por sala (coordenadas dentro da metade superior)
+        # As coordenadas sao absolutas na area do cenario: (0..WIDTH, 0..SPLIT_Y)
+        self.item_positions = {
+            "praia": {
+                "concha": (WIDTH // 2, SPLIT_Y - 12),
+            },
+            "floresta": {
+                "galho": (40, SPLIT_Y - 8),
+            },
+            "caverna": {
+                "tocha": (WIDTH // 2 + 30, SPLIT_Y - 18),
+            },
+        }
+
         # novo: salas visitadas (para XP na primeira visita)
         self.visited_rooms = set()
 
@@ -600,7 +614,7 @@ class App:
 
         # Desenhos por cena (rapidos)
         scene = self.rooms[self.room]["scene"]
-        itens = self.rooms[self.room].get("itens", [])
+        items = self.rooms[self.room].get("items", [])
         cx = x + w // 2
         base = y + h - 30
 
@@ -608,8 +622,8 @@ class App:
             px.circ(cx + 70, y + 20, 10, 13)
             px.rect(x, base - 20, w, 20, 12)   # mar (azul claro)
             px.rect(x, y + h - 30, w, 30, 15)   # areia (bege)
-            if "concha" in itens:
-                px.rect(cx - 5, base - 25, 10, 5, 7)  # concha (branca)
+            # Desenha itens da sala (se presentes)
+            self._draw_room_items(x, y, w, h, items)
 
         elif scene == "floresta":
             for i in range(5):
@@ -623,6 +637,41 @@ class App:
             px.circ(cx, base - 20, 45, 0)
             px.rect(x, y + h - 30, w, 30, 3)
             px.rect(x, base, w, 30, 3)
+            # Desenha itens da sala (se presentes)
+            self._draw_room_items(x, y, w, h, items)
+
+    def _draw_room_items(self, x, y, w, h, items_in_room):
+        room = self.room
+        positions = self.item_positions.get(room, {})
+        for item in items_in_room:
+            pos = positions.get(item)
+            if not pos:
+                continue
+            ix, iy = pos
+            self._draw_item(item, ix, iy)
+
+    def _draw_item(self, item: str, ix: int, iy: int):
+        # Representacao simples por formas
+        if item == "concha":
+            # pequena concha branca/rosa
+            px.pset(ix - 2, iy, 7)
+            px.pset(ix - 1, iy, 15)
+            px.pset(ix, iy, 7)
+            px.pset(ix + 1, iy, 7)
+        elif item == "galho":
+            # galho marrom
+            px.line(ix - 6, iy, ix + 6, iy - 2, 4)
+            px.pset(ix + 2, iy - 3, 11)
+        elif item == "tocha":
+            # cabo
+            px.rect(ix - 1, iy, 3, 8, 4)
+            # chama
+            px.tri(ix - 3, iy, ix + 3, iy, ix, iy - 6, 10)
+            px.pset(ix, iy - 7, 8)
+        elif item == "adaga":
+            # lamina cinza e punho escuro
+            px.line(ix - 3, iy, ix + 3, iy, 6)
+            px.pset(ix - 4, iy, 5)
 
     def draw_console(self, x, y, w, h):
         margin = 6
