@@ -101,6 +101,9 @@ class App:
     def __init__(self):
         px.init(WIDTH, HEIGHT, title="TEXT ADVENTURE")
 
+        # Iniciando Personagem
+        self.char = Character()
+
         # Ajuste de paleta (uma vez)
         px.colors[TEXT_COLOR] = 0x00FF00  # verde tipo monitor
 
@@ -108,6 +111,8 @@ class App:
         self.history = []
         self.input_buf = ""
         self.ext_map = EXT_FONT_MAP
+        # Efeitos ativos (ex.: "tocha")
+        self.effects = set()
 
         # Mapeamento de itens
         self.item_map = {
@@ -133,7 +138,7 @@ class App:
                 "items": ["concha"],
                 "scene": "praia",
                 "region": "praia",
-                "encounters_enabled": True,
+                "encounters_enabled": False,
             },
             "floresta": {
                 "desc": "Arvores densas bloqueiam parte da luz noturna. Ha um cheiro de terra molhada.",
@@ -177,7 +182,6 @@ class App:
             },
         }
         self.room = "menu"
-        self.char = Character()
         self.awaiting_name = True
 
         # novo: salas visitadas (para XP na primeira visita)
@@ -398,6 +402,9 @@ class App:
             defesa = self.char.status["defesa"]
             self.say(f"Nível {lvl} | XP {xp}/{to_next} | Pontos {pts}")
             self.say(f"Atributos: Vida {vida}/{vmax}, Forca {forca}, Defesa {defesa}")
+            # Mostrar efeitos ativos
+            effects = ", ".join(sorted(self.effects)) if self.effects else "nenhum"
+            self.say(f"Efeitos: {effects}")
             return
 
         if cmd.startswith("usar ") or cmd.startswith("use "):
@@ -457,11 +464,22 @@ class App:
                 effect = self.item_map[item].get("efeito")
                 if effect:
                     self.say(f"O efeito do item {item} foi ativado: {effect}")
+            # Ativa efeito especial da tocha
+            if item == "tocha":
+                if "tocha" in self.effects:
+                    self.say("A tocha ja esta acesa.")
+                else:
+                    self.effects.add("tocha")
+                    self.say("A tocha agora esta acesa. Voce pode entrar na caverna.")
         else:
             self.say("Nao pode usar isso.")
 
     # ------- Entrada em sala (concede XP apenas na primeira vez) -------
     def enter_room(self, new_room: str):
+        # Bloqueia entrar no INTERIOR da caverna sem tocha ativa
+        if new_room == "interior da caverna" and "tocha" not in self.effects:
+            self.say("Esta muito escuro para entrar. Use a tocha primeiro: 'usar tocha'.")
+            return
         self.room = new_room
         if not self.char.has_visited(new_room):
             self.char.visited_rooms.add(new_room)
@@ -582,6 +600,7 @@ class App:
 
         # Desenhos por cena (rapidos)
         scene = self.rooms[self.room]["scene"]
+        itens = self.rooms[self.room].get("itens", [])
         cx = x + w // 2
         base = y + h - 30
 
@@ -589,6 +608,9 @@ class App:
             px.circ(cx + 70, y + 20, 10, 13)
             px.rect(x, base - 20, w, 20, 12)   # mar (azul claro)
             px.rect(x, y + h - 30, w, 30, 15)   # areia (bege)
+            if "concha" in itens:
+                px.rect(cx - 5, base - 25, 10, 5, 7)  # concha (branca)
+
         elif scene == "floresta":
             for i in range(5):
                 tx = x + 20 + i * 50
