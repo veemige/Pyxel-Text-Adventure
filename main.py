@@ -512,11 +512,11 @@ class App:
             return
         # Parametros por modo
         if mode == "leve":
-            hit_chance = 0.95; mult = 0.7; cost = 0
+            hit_chance = 0.95; mult = 0.7; cost = 1
         elif mode == "pesado":
             hit_chance = 0.65; mult = 1.8; cost = 3
         else:
-            hit_chance = 0.85; mult = 1.0; cost = 0
+            hit_chance = 0.85; mult = 1.0; cost = 2
         # Energia
         if cost > 0 and not self._spend_energy(cost):
             self.say(f"Sem energia suficiente ({self.char.status['energia']}/{self.char.status['energia_max']}).")
