@@ -65,7 +65,7 @@ class App:
         self.describe_room()
 
         # Encontros (modulo)
-        self.encounter_chance = 0.5
+        self.encounter_chance = 0.25
         self.encounters = EXTERNAL_ENCOUNTERS
         self.scripted_by_room = EXTERNAL_SCRIPTED
         self.encounter_flags = set()

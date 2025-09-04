@@ -49,6 +49,10 @@ class Character:
             target = "forca"
         elif attr == "defesa":
             target = "defesa"
+        elif attr == "agilidade":
+            target = "agilidade"
+        elif attr == "energia":
+            target = "energia"
         else:
             return False, "Atributo invalido. Use vida, forca ou defesa."
 
