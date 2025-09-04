@@ -1,0 +1,6 @@
+# Constants and layout
+WIDTH, HEIGHT = 320, 240
+SPLIT_Y = HEIGHT // 2
+TEXT_COLOR = 11
+BG_COLOR = 0
+CHAR_W, CHAR_H = 4, 6

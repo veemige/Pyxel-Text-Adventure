@@ -1,5 +1,9 @@
 import pyxel as px
 import random
+from game.items import ITEMS as EXTERNAL_ITEMS, ITEM_POSITIONS as EXTERNAL_ITEM_POSITIONS
+from game.world import WORLD as EXTERNAL_WORLD
+from game.encounters import ENCOUNTERS as EXTERNAL_ENCOUNTERS, SCRIPTED_BY_ROOM as EXTERNAL_SCRIPTED
+from game.character import Character
 
 # Constantes de layout
 WIDTH, HEIGHT = 320, 240
@@ -21,237 +25,54 @@ EXT_FONT_MAP = {
     "Ã": (32, 6), "Õ": (36, 6), "À": (40, 6), "Ç": (44, 6),
 }
 
-class Character():
-    def __init__(self):
-        self.name = "Hero"
-        self.visited_rooms = set()
-        self.inventory = {
-            "utensilios": [],
-            "armas": [],
-            "armaduras": [],
-            "comuns": []
-        }
-        self.status = {
-            "vida": 10,
-            "vida_max": 10,     # novo: vida máxima
-            "forca": 1,
-            "defesa": 1,
-            "nivel": 1,
-            "experiencia": 0,
-            "pontos": 0,        # novo: pontos de habilidade
-        }
-
-        
-
-    # novo: XP necessário para próximo nível (progressão linear simples)
-    def xp_to_next(self) -> int:
-        lvl = self.status["nivel"]
-        return 10 + (lvl - 1) * 10
-
-    # novo: ganhar XP e aplicar level ups em cascata
-    def gain_xp(self, amount: int):
-        msgs = []
-        if amount <= 0:
-            return msgs
-        self.status["experiencia"] += amount
-        msgs.append(f"+{amount} XP.")
-        while self.status["experiencia"] >= self.xp_to_next():
-            need = self.xp_to_next()
-            self.status["experiencia"] -= need
-            self.status["nivel"] += 1
-            self.status["pontos"] += 2
-            self.status["vida_max"] += 2
-            self.status["vida"] = self.status["vida_max"]
-            msgs.append(f"Subiu para o nivel {self.status['nivel']}! +2 pontos. Vida +2 e restaurada.")
-        return msgs
-
-    # novo: alocar pontos em atributos
-    def allocate_points(self, attr: str, qty: int):
-        attr = attr.lower()
-        if attr in ("vida", "hp"):
-            target = "vida"
-        elif attr == "forca":
-            target = "forca"
-        elif attr == "defesa":
-            target = "defesa"
-        else:
-            return False, "Atributo invalido. Use vida, forca ou defesa."
-
-        if qty <= 0:
-            return False, "Quantidade deve ser positiva."
-
-        pts = self.status["pontos"]
-        if qty > pts:
-            return False, f"Você so tem {pts} ponto(s)."
-
-        self.status["pontos"] -= qty
-        if target == "vida":
-            self.status["vida_max"] += qty
-            # recupera a mesma quantidade na vida atual (sem passar do máximo)
-            self.status["vida"] = min(self.status["vida"] + qty, self.status["vida_max"])
-        else:
-            self.status[target] += qty
-
-        return True, f"{qty} ponto(s) atribuido(s) em {target}. Restantes: {self.status['pontos']}."
-
-    def has_visited(self, room: str) -> bool:
-        return room in self.visited_rooms
+...
 
 class App:
     def __init__(self):
         px.init(WIDTH, HEIGHT, title="TEXT ADVENTURE")
 
-        # Iniciando Personagem
+        # Personagem
         self.char = Character()
 
-        # Ajuste de paleta (uma vez)
-        px.colors[TEXT_COLOR] = 0x00FF00  # verde tipo monitor
+        # Paleta (verde terminal)
+        px.colors[TEXT_COLOR] = 0x00FF00
 
-        # Estado do console
+        # Console / UI
         self.history = []
         self.input_buf = ""
         self.ext_map = EXT_FONT_MAP
-        # Efeitos ativos (ex.: "tocha")
-        self.effects = set()
 
-        # Mapeamento de itens
-        self.item_map = {
-            "concha": {"tipo": "comum", "desc": "Uma concha do mar."},
-            "galho": {"tipo": "arma", "desc": "Um galho seco.", "dano": 0.5},
-            "tocha": {"tipo": "utensilio", "desc": "Uma tocha acesa.", "efeito": "ilumina o ambiente"},
-            "adaga": {"tipo": "arma", "desc": "Uma adaga afiada.", "dano": 1.0}
-        }
+        # Efeitos e status
+        self.effects = set()           # ex.: {"tocha"}
+        self.player_status = {}        # ex.: {"guard": 1}
+        self.skill_cd = {}             # ex.: {"sangrar": 2}
 
-        # Mundo simples (salas, saidas, itens, cena)
-        self.rooms = {
-            "menu": {
-                "desc": "Voce esta no menu principal.",
-                "exits": {},
-                "items": [],
-                "scene": "menu",
-                "region": "menu",
-                "encounters_enabled": False,
-            },
-            "praia": {
-                "desc": "Voce esta em uma praia silenciosa. O mar murmura ao sul. A luz da lua reflete nas ondas do mar a sua frente.",
-                "exits": {"norte": "floresta", "leste": "caverna"},
-                "items": ["concha"],
-                "scene": "praia",
-                "region": "praia",
-                "encounters_enabled": False,
-            },
-            "floresta": {
-                "desc": "Arvores densas bloqueiam parte da luz noturna. Ha um cheiro de terra molhada.",
-                "exits": {"sul": "praia"},
-                "items": ["galho"],
-                "scene": "floresta",
-                "region": "floresta",
-                "encounters_enabled": True,
-            },
-            "caverna": {
-                "desc": "Uma caverna escura e fria. Ecoa o som de gotas.",
-                "exits": {"oeste": "praia", "entrada": "interior da caverna"},
-                "items": ["tocha"],
-                "scene": "caverna",
-                "region": "caverna",
-                "encounters_enabled": True,
-            },
-            "interior da caverna": {
-                "desc": "Voce esta dentro de uma caverna escura. Ha um brilho fraco vindo de uma abertura ao norte.",
-                "exits": {"norte": "planicie"},
-                "items": [],
-                "scene": "",
-                "region": "caverna",
-                "encounters_enabled": True,
-            },
-            "planicie": {
-                "desc": "Voce chegou a uma planicie aberta com grama rala. O ceu estrelado se estende acima de voce.",
-                "exits": {"sul": "interior da caverna", "oeste": "floresta", "norte": "leste da vila"},
-                "items": [],
-                "scene": "",
-                "region": "planicie",
-                "encounters_enabled": True,
-            },
-            "leste da vila": {
-                "desc": "Voce chegou ao leste da vila. Casas simples se alinham ao longo da estrada de terra.",
-                "exits": {"sul": "planicie", "oeste": "vila"},
-                "items": [],
-                "scene": "",
-                "region": "vila",
-                "encounters_enabled": True,
-            },
-        }
+        # Dados vindos dos modulos (itens, mundo, posicoes)
+        self.item_map = EXTERNAL_ITEMS
+        self.rooms = EXTERNAL_WORLD
         self.room = "menu"
         self.awaiting_name = True
+        self.item_positions = EXTERNAL_ITEM_POSITIONS
 
-        # Posicoes de itens por sala (coordenadas dentro da metade superior)
-        # As coordenadas sao absolutas na area do cenario: (0..WIDTH, 0..SPLIT_Y)
-        self.item_positions = {
-            "praia": {
-                "concha": (WIDTH // 2, SPLIT_Y - 12),
-            },
-            "floresta": {
-                "galho": (40, SPLIT_Y - 8),
-            },
-            "caverna": {
-                "tocha": (WIDTH // 2 + 30, SPLIT_Y - 18),
-            },
-        }
-
-        # novo: salas visitadas (para XP na primeira visita)
+        # Estado de progresso
         self.visited_rooms = set()
 
-        # Largura maxima de caracteres por linha no console
-        self.max_cols = (WIDTH - 12) // CHAR_W  # margem de 6px de cada lado
+        # Console: largura maxima (margens de 6px)
+        self.max_cols = (WIDTH - 12) // CHAR_W
 
-        # Mensagem inicial
+        # Mensagens iniciais
         self.say("Bem-vindo! Digite seu nome e pressione Enter. (Use 'ajuda' para dicas)")
         self.describe_room()
 
-        # -------- Sistema de encontros --------
-        # Probabilidade base de encontro aleatório ao entrar em uma sala habilitada
-        self.encounter_chance = 0.25
-        # Encontros cadastrados (data-driven)
-        # Cada encontro pode restringir por 'rooms' e/ou 'regions', e por faixa de nível
-        self.encounters = {
-            "mercador_costeiro": {
-                "type": "npc",
-                "regions": ["praia", "planicie", "vila"],
-                "min_level": 1,
-                "weight": 1,
-            },
-            "caranguejo": {
-                "type": "enemy",
-                "regions": ["praia"],
-                "min_level": 1,
-                "max_level": 3,
-                "weight": 3,
-                "enemy": {"name": "Caranguejo", "base_hp": 4, "atk": 1},
-            },
-            "lobo": {
-                "type": "enemy",
-                "regions": ["floresta", "planicie"],
-                "min_level": 2,
-                "weight": 2,
-                "enemy": {"name": "Lobo", "base_hp": 6, "atk": 2},
-            },
-            "morcego": {
-                "type": "enemy",
-                "regions": ["caverna"],
-                "min_level": 1,
-                "weight": 2,
-                "enemy": {"name": "Morcego", "base_hp": 3, "atk": 1},
-            },
-        }
-        # Encontros programados por sala (ex.: 1a vez que entra)
-        self.scripted_by_room = {
-            "interior da caverna": [
-                {"id": "minero_intro", "type": "npc", "once": True, "min_level": 1, "handler": "script_miner"},
-            ]
-        }
-        # Flags para encontros programados (evitar repetir 'once')
+        # Encontros (modulo)
+        self.encounter_chance = 0.5
+        self.encounters = EXTERNAL_ENCOUNTERS
+        self.scripted_by_room = EXTERNAL_SCRIPTED
         self.encounter_flags = set()
-        # --------------------------------------
+
+        # Combate
+        self.in_combat = False
+        self.enemy = None
 
         px.run(self.update, self.draw)
 
@@ -295,7 +116,7 @@ class App:
             # Primeiro, tratar entrada do nome
             if self.awaiting_name:
                 if cmd in ("ajuda", "help", "?"):
-                    self.say("Digite um nome e pressione Enter. Ou 'entrar' para manter 'Hero'.")
+                    self.say("Digite um nome e pressione Enter. Ou 'entrar' para manter 'Heroi'.")
                     return
                 if cmd == "entrar":
                     self.awaiting_name = False
@@ -326,6 +147,66 @@ class App:
                 self.enter_room("praia")
                 return
             self.say(f"Bem-vindo, {self.char.name}! Digite 'entrar' para comecar.")
+            return
+
+        # Em combate: restringe comandos
+        if self.in_combat:
+            if cmd in ("ajuda", "help", "?"):
+                self.say("Em combate: atacar | leve | pesado | defender | sangrar | atordoar | usar <item> | fugir | status | inventario")
+                return
+            if cmd in ("status", "info"):
+                self.say(f"Nome: {self.char.name}")
+                self.say(f"Vida: {self.char.status['vida']}/{self.char.status['vida_max']} | Energia: {self.char.status['energia']}/{self.char.status['energia_max']}")
+                if self.enemy:
+                    self.say(f"Inimigo: {self.enemy['name']} {self.enemy['hp']}/{self.enemy['max_hp']}")
+                return
+            if cmd in ("inventario", "inv", "i"):
+                if self.char.inventory:
+                    self.say("Voce carrega: ")
+                    self.say("Utensilios: " + ", ".join(self.char.inventory["utensilios"]) if self.char.inventory["utensilios"] else "Utensilios: vazio")
+                    self.say("Armas: " + ", ".join(self.char.inventory["armas"]) if self.char.inventory["armas"] else "Armas: vazio")
+                    self.say("Armaduras: " + ", ".join(self.char.inventory["armaduras"]) if self.char.inventory["armaduras"] else "Armaduras: vazio")
+                    self.say("Comuns: " + ", ".join(self.char.inventory["comuns"]) if self.char.inventory["comuns"] else "Comuns: vazio")
+                else:
+                    self.say("Voce nao carrega nada.")
+                return
+            if cmd in ("atacar", "attack", "a"):
+                self._combat_attack(mode="normal")
+                return
+            if cmd in ("leve", "ataque leve", "atacar leve"):
+                self._combat_attack(mode="leve")
+                return
+            if cmd in ("pesado", "ataque pesado", "atacar pesado"):
+                self._combat_attack(mode="pesado")
+                return
+            if cmd in ("defender", "defesa", "block"):
+                self._combat_defend()
+                return
+            if cmd in ("sangrar", "sangue"):
+                self._combat_skill_bleed()
+                return
+            if cmd in ("atordoar", "stun"):
+                self._combat_skill_stun()
+                return
+            if cmd.startswith("usar ") or cmd.startswith("use "):
+                _, _, item = cmd.partition(" ")
+                before = self.char.status["vida"]
+                self.use(item.strip())
+                # Se combate ainda ativo e inimigo vivo, turno do inimigo
+                if self.in_combat and self.enemy and self.enemy["hp"] > 0 and self.char.status["vida"] > 0:
+                    self._combat_enemy_turn()
+                return
+            if cmd in ("fugir", "run", "escape"):
+                if random.random() < 0.5:
+                    self.say("Voce fugiu do combate.")
+                    self.in_combat = False
+                    self.enemy = None
+                else:
+                    self.say("Nao conseguiu fugir!")
+                    if self.enemy and self.char.status["vida"] > 0:
+                        self._combat_enemy_turn()
+                return
+            self.say("Voce esta em combate. Use: atacar | leve | pesado | defender | sangrar | atordoar | usar <item> | fugir | status")
             return
 
         # Ajuda
@@ -414,8 +295,9 @@ class App:
             vmax = self.char.status["vida_max"]
             forca = self.char.status["forca"]
             defesa = self.char.status["defesa"]
-            self.say(f"Nível {lvl} | XP {xp}/{to_next} | Pontos {pts}")
-            self.say(f"Atributos: Vida {vida}/{vmax}, Forca {forca}, Defesa {defesa}")
+            energia = self.char.status["energia"]; emax = self.char.status["energia_max"]
+            self.say(f"Nivel {lvl} | XP {xp}/{to_next} | Pontos {pts}")
+            self.say(f"Atributos: Vida {vida}/{vmax}, Forca {forca}, Defesa {defesa}, Energia {energia}/{emax}")
             # Mostrar efeitos ativos
             effects = ", ".join(sorted(self.effects)) if self.effects else "nenhum"
             self.say(f"Efeitos: {effects}")
@@ -437,6 +319,9 @@ class App:
             self.say("Saidas: " + ", ".join(sorted(r["exits"].keys())))
     # Mover-se entre os ambientes
     def go(self, direction: str):
+        if self.in_combat:
+            self.say("Nao pode se mover em combate.")
+            return
         r = self.rooms[self.room]
         if direction in r["exits"]:
             self.enter_room(r["exits"][direction])
@@ -526,6 +411,8 @@ class App:
         return pool
     
     def _maybe_trigger_random_encounter(self):
+        if self.in_combat:
+            return
         r = self.rooms[self.room]
         if not r.get("encounters_enabled", False):
             return
@@ -575,10 +462,7 @@ class App:
     
     def _enc_enemy(self, eid, e):
         data = e.get("enemy", {})
-        name = data.get("name", "Inimigo")
-        lvl = self.char.status["nivel"]
-        self.say(f"Um {name} salta a sua frente! (area: {self.rooms[self.room].get('region')}, nivel {lvl})")
-        self.say("Dica: daqui voce pode chamar um loop de combate.")
+        self._start_combat(eid, data)
     
     def script_miner(self):
         self.say("Um mineiro cansado surge das sombras: 'Cuidado lá dentro.'")
@@ -592,6 +476,205 @@ class App:
             if r <= acc:
                 return v
         return items[-1][0]
+
+    # ----------------- Combate -----------------
+    def _start_combat(self, encounter_id: str, enemy_def: dict):
+        if self.in_combat:
+            return
+        lvl = self.char.status["nivel"]
+        name = enemy_def.get("name", "Inimigo")
+        base_hp = int(enemy_def.get("base_hp", 5))
+        atk = int(enemy_def.get("atk", 1))
+        dfn = int(enemy_def.get("def", 0))
+        hp = base_hp + max(0, lvl - 1)
+        self.enemy = {
+            "id": encounter_id,
+            "name": name,
+            "hp": hp,
+            "max_hp": hp,
+            "atk": atk,
+            "def": dfn,
+            "level": max(1, lvl),
+            "status": {},  # ex.: {"sangrando": 2, "atordoado": 1}
+        }
+        self.in_combat = True
+        self.say(f"Um {name} aparece! Combate iniciado.")
+        self.say("Seu turno: atacar | leve | pesado | defender | sangrar | atordoar | usar <item> | fugir.")
+        # Regenera um pouco de energia ao entrar em combate
+        self._regen_energy(1)
+
+    def _combat_player_attack(self):
+        # Mantido por compatibilidade com comando 'atacar'
+        self._combat_attack(mode="normal")
+
+    def _combat_attack(self, mode: str = "normal"):
+        if not self.in_combat or not self.enemy:
+            return
+        # Parametros por modo
+        if mode == "leve":
+            hit_chance = 0.95; mult = 0.7; cost = 0
+        elif mode == "pesado":
+            hit_chance = 0.65; mult = 1.8; cost = 3
+        else:
+            hit_chance = 0.85; mult = 1.0; cost = 0
+        # Energia
+        if cost > 0 and not self._spend_energy(cost):
+            self.say(f"Sem energia suficiente ({self.char.status['energia']}/{self.char.status['energia_max']}).")
+            return
+        # Acerto
+        if random.random() > hit_chance:
+            self.say(f"Seu ataque {mode} errou!")
+            # Turno do inimigo
+            if self.enemy and self.enemy["hp"] > 0 and self.char.status["vida"] > 0:
+                self._combat_enemy_turn()
+            return
+        # Dano
+        p_for = self.char.status["forca"]
+        e_def = self.enemy.get("def", 0)
+        base = max(1, int(round(p_for * mult)) - e_def)
+        dmg = max(1, base)
+        # critico simples 10%
+        if random.random() < 0.10:
+            dmg += 1
+            self.say("Acerto critico!")
+        self.enemy["hp"] = max(0, self.enemy["hp"] - dmg)
+        self.say(f"Voce ataca ({mode}) e causa {dmg} de dano. ({self.enemy['hp']}/{self.enemy['max_hp']})")
+        if self.enemy["hp"] <= 0:
+            self._end_combat(victory=True)
+            return
+        # inimigo revida
+        if self.char.status["vida"] > 0:
+            self._combat_enemy_turn()
+
+    def _combat_defend(self):
+        # Reduz o proximo dano pela metade e regenera energia extra
+        self.player_status["guard"] = 1
+        self.say("Voce assume postura defensiva.")
+        self._regen_energy(2)
+        if self.enemy and self.enemy["hp"] > 0 and self.char.status["vida"] > 0:
+            self._combat_enemy_turn()
+
+    def _combat_skill_bleed(self):
+        # Requer arma cortante (adaga), custo de energia e cooldown
+        if self.skill_cd.get("sangrar", 0) > 0:
+            self.say(f"'Sangrar' em recarga por {self.skill_cd['sangrar']} turno(s).")
+            return
+        if "adaga" not in self.char.inventory["armas"]:
+            self.say("Voce precisa de uma arma cortante (ex.: adaga).")
+            return
+        if not self._spend_energy(2):
+            self.say("Sem energia suficiente.")
+            return
+        # Aplica DOT no inimigo
+        cur = self.enemy["status"].get("sangrando", 0)
+        self.enemy["status"]["sangrando"] = max(cur, 0) + 3
+        self.say("Voce causa um corte profundo! (sangrar 3)")
+        self.skill_cd["sangrar"] = 3
+        if self.enemy and self.enemy["hp"] > 0 and self.char.status["vida"] > 0:
+            self._combat_enemy_turn()
+
+    def _combat_skill_stun(self):
+        # Tenta atordoar (chance moderada), custo e cooldown
+        if self.skill_cd.get("atordoar", 0) > 0:
+            self.say(f"'Atordoar' em recarga por {self.skill_cd['atordoar']} turno(s).")
+            return
+        if not self._spend_energy(3):
+            self.say("Sem energia suficiente.")
+            return
+        # Pequena vantagem se tiver arma
+        chance = 0.45
+        if self.char.inventory["armas"]:
+            chance += 0.10
+        if random.random() < chance:
+            cur = self.enemy["status"].get("atordoado", 0)
+            self.enemy["status"]["atordoado"] = max(cur, 0) + 1
+            self.say("Voce atordoa o inimigo! (perde o proximo turno)")
+        else:
+            self.say("Tentativa de atordoar falhou.")
+        self.skill_cd["atordoar"] = 4
+        if self.enemy and self.enemy["hp"] > 0 and self.char.status["vida"] > 0:
+            self._combat_enemy_turn()
+
+    def _combat_enemy_turn(self):
+        if not self.in_combat or not self.enemy:
+            return
+        # Aplica status no inicio do turno do inimigo (DOT, etc.)
+        if self.enemy["status"].get("sangrando", 0) > 0:
+            self.enemy["hp"] = max(0, self.enemy["hp"] - 1)
+            self.enemy["status"]["sangrando"] -= 1
+            self.say(f"{self.enemy['name']} sangra (1). ({self.enemy['hp']}/{self.enemy['max_hp']})")
+            if self.enemy["status"]["sangrando"] <= 0:
+                del self.enemy["status"]["sangrando"]
+        # Morreu por DOT
+        if self.enemy["hp"] <= 0:
+            self._end_combat(victory=True)
+            return
+        # Atordoado: perde o turno
+        if self.enemy["status"].get("atordoado", 0) > 0:
+            self.say(f"{self.enemy['name']} esta atordoado e perde o turno!")
+            self.enemy["status"]["atordoado"] -= 1
+            if self.enemy["status"]["atordoado"] <= 0:
+                del self.enemy["status"]["atordoado"]
+            # Fim do turno do inimigo: regenera energia e avanca cooldowns
+            self._regen_energy(1)
+            self._cooldowns_step()
+            return
+        e_atk = self.enemy.get("atk", 1)
+        p_def = self.char.status["defesa"]
+        dmg = max(1, e_atk - p_def)
+        # Guard ativa reduz dano pela metade (arredonda para baixo)
+        if self.player_status.get("guard", 0) > 0:
+            red = dmg // 2
+            dmg = max(0, dmg - red)
+            self.player_status["guard"] -= 1
+            if self.player_status["guard"] <= 0:
+                del self.player_status["guard"]
+        self.char.status["vida"] = max(0, self.char.status["vida"] - dmg)
+        self.say(f"{self.enemy['name']} ataca e causa {dmg} de dano. (Sua vida: {self.char.status['vida']}/{self.char.status['vida_max']})")
+        if self.char.status["vida"] <= 0:
+            self.say("Voce caiu em combate.")
+        # Fim do turno do inimigo: regenera energia e avanca cooldowns
+        self._regen_energy(1)
+        self._cooldowns_step()
+
+    def _end_combat(self, victory: bool):
+        if victory:
+            # Recompensa simples de XP
+            base_hp = self.enemy.get("max_hp", 5)
+            atk = self.enemy.get("atk", 1)
+            xp = max(1, base_hp // 2 + atk)
+            self.say(f"Vitoria! Você ganha {xp} XP.")
+            for m in self.char.gain_xp(xp):
+                self.say(m)
+        else:
+            self.say("Combate encerrado.")
+        self.in_combat = False
+        self.enemy = None
+        self.player_status.clear()
+        # Peq. recuperacao fora de combate
+        self._regen_energy(1)
+
+    # ---------- Utilidades de combate ----------
+    def _spend_energy(self, cost: int) -> bool:
+        if self.char.status["energia"] < cost:
+            return False
+        self.char.status["energia"] -= cost
+        return True
+    
+    def _regen_energy(self, amount: int):
+        e = self.char.status["energia"]
+        emax = self.char.status["energia_max"]
+        self.char.status["energia"] = min(emax, e + amount)
+    
+    def _cooldowns_step(self):
+        # Reduz cooldowns ativos em 1
+        if not self.skill_cd:
+            return
+        for k in list(self.skill_cd.keys()):
+            if self.skill_cd[k] > 0:
+                self.skill_cd[k] -= 1
+            if self.skill_cd[k] <= 0:
+                self.skill_cd[k] = 0
 
     # ---------------- Desenho ----------------
     def draw(self):
@@ -618,6 +701,17 @@ class App:
         cx = x + w // 2
         base = y + h - 30
 
+        # Menu (titulo simples)
+        if scene == "menu":
+            title = "TEXT ADVENTURE"
+            # caixa central
+            px.rectb(cx - 70, y + 18, 140, 24, 6)
+            self._draw_text_mixed(cx - len(title)*CHAR_W//2, y + 26, title, 7)
+            subtitle = "Digite seu nome e Enter"
+            self._draw_text_mixed(cx - len(subtitle)*CHAR_W//2, y + 60, subtitle, 7)
+            # nenhum item no menu
+            return
+
         if scene == "praia":
             px.circ(cx + 70, y + 20, 10, 13)
             px.rect(x, base - 20, w, 20, 12)   # mar (azul claro)
@@ -630,6 +724,8 @@ class App:
                 tx = x + 20 + i * 50
                 px.rect(tx, base - 25, 6, 25, 4)   # tronco (marrom)
                 px.tri(tx - 10, base - 10, tx + 3, base - 75, tx + 16, base - 10, 11)  # copa (verde claro)
+            # itens
+            self._draw_room_items(x, y, w, h, items)
         elif scene == "caverna":
             px.tri(cx - 70, base, cx - 40, base - 70, cx - 25, base, 0)
             px.tri(cx + 25, base, cx + 40, base - 70, cx + 70, base, 0)
@@ -638,6 +734,47 @@ class App:
             px.rect(x, y + h - 30, w, 30, 3)
             px.rect(x, base, w, 30, 3)
             # Desenha itens da sala (se presentes)
+            self._draw_room_items(x, y, w, h, items)
+        elif scene == "interior da caverna":
+            # Salas sem 'scene' especifica: desenhar por nome
+            # interior escuro com estalagmites/estalactites
+            px.rect(x, y, w, h, 0)
+            # estalactites
+            for i in range(0, w, 20):
+                px.tri(x + i, y, x + i + 8, y + 14, x + i + 16, y, 1)
+            # estalagmites
+            floor_y = y + h - 10
+            for i in range(10, w, 24):
+                px.tri(x + i, floor_y, x + i + 8, floor_y - 12, x + i + 16, floor_y, 1)
+            # brilho ao norte
+            px.circ(x + w - 20, y + 10, 4, 7)
+            # itens
+            self._draw_room_items(x, y, w, h, items)
+        elif scene == "planicie":
+            # ceu estrelado
+            for sx in range(x + 5, x + w - 5, 16):
+                if (sx // 7) % 2 == 0:
+                    px.pset(sx, y + 8, 7)
+            # colinas
+            px.tri(x, base, x + 50, base - 18, x + 100, base, 3)
+            px.tri(x + 90, base, x + 140, base - 14, x + 190, base, 3)
+            # gramados
+            for gx in range(x + 8, x + w - 8, 12):
+                px.pset(gx, base - 4, 11)
+                px.pset(gx + 1, base - 6, 11)
+            self._draw_room_items(x, y, w, h, items)
+        elif scene == "leste da vila":
+            road_y = y + h - 18
+            # estrada
+            px.rect(x, road_y, w, 8, 4)
+            # casas simples
+            hx = x + 20
+            for k in range(3):
+                px.rect(hx + k * 50, road_y - 20, 30, 20, 5)
+                px.tri(hx + k * 50, road_y - 20, hx + k * 50 + 15, road_y - 32, hx + k * 50 + 30, road_y - 20, 2)
+                # janela
+                px.pset(hx + k * 50 + 8, road_y - 10, 10)
+                px.pset(hx + k * 50 + 9, road_y - 10, 10)
             self._draw_room_items(x, y, w, h, items)
 
     def _draw_room_items(self, x, y, w, h, items_in_room):

@@ -1,0 +1,49 @@
+import random
+
+ENCOUNTERS = {
+    "mercador_costeiro": {
+        "type": "npc",
+        "regions": ["praia", "planicie", "vila"],
+        "min_level": 1,
+        "weight": 1,
+    },
+    "caranguejo": {
+        "type": "enemy",
+        "regions": ["praia"],
+        "min_level": 1,
+        "max_level": 3,
+        "weight": 3,
+        "enemy": {"name": "Caranguejo", "base_hp": 4, "atk": 1},
+    },
+    "lobo": {
+        "type": "enemy",
+        "regions": ["floresta", "planicie"],
+        "min_level": 2,
+        "weight": 2,
+        "enemy": {"name": "Lobo", "base_hp": 6, "atk": 2},
+    },
+    "morcego": {
+        "type": "enemy",
+        "regions": ["caverna"],
+        "min_level": 1,
+        "weight": 2,
+        "enemy": {"name": "Morcego", "base_hp": 3, "atk": 1},
+    },
+}
+
+SCRIPTED_BY_ROOM = {
+    "interior da caverna": [
+        {"id": "minero_intro", "type": "npc", "once": True, "min_level": 1, "handler": "script_miner"},
+    ]
+}
+
+
+def weighted_choice(items):
+    total = sum(w for _, w in items)
+    r = random.uniform(0, total)
+    acc = 0
+    for v, w in items:
+        acc += w
+        if r <= acc:
+            return v
+    return items[-1][0]

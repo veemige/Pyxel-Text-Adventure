@@ -1,0 +1,12 @@
+ITEMS = {
+    "concha": {"tipo": "comum", "desc": "Uma concha do mar."},
+    "galho": {"tipo": "arma", "desc": "Um galho seco.", "dano": 0.5},
+    "tocha": {"tipo": "utensilio", "desc": "Uma tocha acesa.", "efeito": "ilumina o ambiente"},
+    "adaga": {"tipo": "arma", "desc": "Uma adaga afiada.", "dano": 1.0},
+}
+
+ITEM_POSITIONS = {
+    "praia": {"concha": (160, 108)},
+    "floresta": {"galho": (40, 112)},
+    "caverna": {"tocha": (190, 102)},
+}
