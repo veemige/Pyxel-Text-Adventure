@@ -74,3 +74,30 @@ class Character:
 
     def has_visited(self, room: str) -> bool:
         return room in self.visited_rooms
+
+    # --------- Serializacao para save/load ---------
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "visited_rooms": list(self.visited_rooms),
+            "inventory": self.inventory,
+            "status": self.status,
+        }
+
+    def from_dict(self, data: dict):
+        self.name = data.get("name", self.name)
+        vr = data.get("visited_rooms", [])
+        self.visited_rooms = set(vr)
+        inv = data.get("inventory")
+        if isinstance(inv, dict):
+            # Garante chaves padrao
+            self.inventory = {
+                "utensilios": inv.get("utensilios", []),
+                "armas": inv.get("armas", []),
+                "armaduras": inv.get("armaduras", []),
+                "comuns": inv.get("comuns", []),
+            }
+        st = data.get("status")
+        if isinstance(st, dict):
+            # Mantem campos conhecidos, sem quebrar saves antigos
+            self.status.update(st)
