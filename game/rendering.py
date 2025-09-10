@@ -32,11 +32,21 @@ class GameRenderer:
 		base = y + h - 30
 
 		if scene == "menu":
-			title = "TEXT ADVENTURE"
-			px.rectb(cx - 70, y + 18, 140, 24, 6)
-			draw_text_mixed(cx - len(title)*CHAR_W//2, y + 26, title, 7)
-			subtitle = "Digite seu nome e Enter"
-			draw_text_mixed(cx - len(subtitle)*CHAR_W//2, y + 60, subtitle, 7)
+			title = "CORPO SECO"
+			# Calcula largura total do texto pixelizado (5 pixels por char * scale * número de chars)
+			title_width = len(title) * 5 * 2  # 5 pixels de largura por char, scale=2
+			title_x = cx - title_width // 2
+			
+			# Caixa bem maior ao redor do título
+			box_padding = 20
+			box_height = 35
+			box_y = y + 30
+			px.rectb(title_x - box_padding, box_y, title_width + box_padding * 2, box_height, 7)
+			
+			# Centraliza o texto verticalmente dentro da caixa
+			text_height = 5 * 2  # altura do texto com scale=2 (5 pixels * 2)
+			text_y = box_y + (box_height - text_height) // 2
+			self.draw_pixel_text(title_x, text_y, title, 6, scale=2)
 			return
 
 		if scene == "praia":
@@ -100,10 +110,9 @@ class GameRenderer:
 
 	def _draw_item(self, item: str, ix: int, iy: int):
 		if item == "concha":
-			px.pset(ix - 2, iy, 7)
+			px.rect(ix - 2, iy, 4, 1, 7)
 			px.pset(ix - 1, iy, 15)
-			px.pset(ix, iy, 7)
-			px.pset(ix + 1, iy, 7)
+			px.rect(ix - 1, iy - 1, 2, 1, 7)
 		elif item == "galho":
 			px.line(ix - 6, iy, ix + 6, iy - 2, 4)
 			px.pset(ix + 2, iy - 3, 11)
@@ -112,8 +121,8 @@ class GameRenderer:
 			px.tri(ix - 3, iy, ix + 3, iy, ix, iy - 6, 10)
 			px.pset(ix, iy - 7, 8)
 		elif item == "adaga":
-			px.line(ix - 3, iy, ix + 3, iy, 6)
 			px.pset(ix - 4, iy, 5)
+			px.line(ix - 3, iy, ix + 3, iy, 6)
 
 	def draw_console(self, x, y, w, h):
 		s = self.state
@@ -131,3 +140,34 @@ class GameRenderer:
 		cursor = "_" if (px.frame_count // 15) % 2 == 0 else " "
 		prompt = f"> {s.input_buf}{cursor}"
 		draw_text_mixed(x + margin, y + h - margin - CHAR_H, prompt, TEXT_COLOR)
+
+
+	def draw_pixel_text(self, x, y, text, color, scale=2):
+		"""Desenha texto grande usando retângulos como pixels"""
+		
+		# Mapeamento simples de algumas letras (você pode expandir)
+		font_map = {
+			'C': [[0,1,1,0], [1,0,0,0], [1,0,0,0], [1,0,0,0], [0,1,1,0]],
+			'O': [[0,1,1,0], [1,0,0,1], [1,0,0,1], [1,0,0,1], [0,1,1,0]],
+			'R': [[1,1,1,0], [1,0,0,1], [1,1,1,0], [1,0,1,0], [1,0,0,1]],
+			'P': [[1,1,1,0], [1,0,0,1], [1,1,1,0], [1,0,0,0], [1,0,0,0]],
+			'S': [[0,1,1,1], [1,0,0,0], [0,1,1,0], [0,0,0,1], [1,1,1,0]],
+			'E': [[1,1,1,1], [1,0,0,0], [1,1,1,0], [1,0,0,0], [1,1,1,1]],
+			' ': [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]],
+		}
+		
+		char_x = x
+		for char in text.upper():
+			if char in font_map:
+				pattern = font_map[char]
+				for row_idx, row in enumerate(pattern):
+					for col_idx, pixel in enumerate(row):
+						if pixel:
+							px.rect(
+								char_x + col_idx * scale, 
+								y + row_idx * scale, 
+								scale, scale, 
+								color
+							)
+			
+			char_x += 5 * scale  # Espaçamento entre caracteres

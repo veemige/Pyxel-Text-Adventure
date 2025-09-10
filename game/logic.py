@@ -200,7 +200,7 @@ class GameLogic:
 			return
 		if cmd in ("sair", "exit", "quit"):
 			self.save_game()
-			s.say("Jogo salvo. Obrigado por jogar!")
+			s.say("Jogo salvo.")
 			px.quit()
 		if cmd in ("status", "info"):
 			lvl = s.char.status["nivel"]

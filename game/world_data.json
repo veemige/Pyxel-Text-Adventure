@@ -50,7 +50,7 @@
     "leste da vila": {
         "desc": "Voce chegou ao leste da vila. Casas simples se alinham ao longo da estrada de terra.",
         "exits": {"sul": "planicie", "oeste": "vila"},
-        "items": [],
+        "items": ["adaga"],
         "scene": "leste da vila",
         "region": "vila",
         "encounters_enabled": true
