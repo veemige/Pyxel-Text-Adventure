@@ -3,12 +3,14 @@
         "concha": {"tipo": "comum", "desc": "Uma concha do mar."},
         "galho": {"tipo": "arma", "desc": "Um galho seco.", "dano": 0.5},
         "tocha": {"tipo": "utensilio", "desc": "Uma tocha acesa.", "efeito": "ilumina o ambiente"},
-        "adaga": {"tipo": "arma", "desc": "Uma adaga afiada.", "dano": 1.0}
+        "adaga": {"tipo": "arma", "desc": "Uma adaga afiada.", "dano": 1.0},
+        "pocao de vida": {"tipo": "consumivel", "desc": "Uma pocao que restaura 3 pontos de vida.", "efeito": "restaura 3 pontos de vida"}
     },
     "positions": {
         "praia": {"concha": [160, 108]},
         "floresta": {"galho": [40, 112]},
     "caverna": {"tocha": [190, 102]},
-    "leste da vila": {"adaga": [200, 104]}
+    "leste da vila": {"adaga": [200, 104]},
+    "vila": {"pocao de vida": [200, 104]}
     }
 }

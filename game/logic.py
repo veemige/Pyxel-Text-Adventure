@@ -223,6 +223,9 @@ class GameLogic:
 			return
 		s.say("Nao entendi. Digite 'ajuda'.")
 
+		if cmd == "1":
+			self.room = "vila"
+
 	# --------------- Acoes ---------------
 	def describe_room(self):
 		s = self.s
@@ -280,13 +283,17 @@ class GameLogic:
 			info = s.item_map.get(item, {})
 			effect = info.get("efeito")
 			if effect:
-				s.say(f"O efeito do item {item} foi ativado: {effect}")
+				s.say(f"Voce usou o item {item}: {effect}")
 			if item == "tocha":
 				if "tocha" in s.effects:
 					s.say("A tocha ja esta acesa.")
 				else:
 					s.effects.add("tocha")
 					s.say("A tocha agora esta acesa. Voce pode entrar na caverna.")
+			elif item == "pocao de vida":
+				self._regen_health(3)
+				s.say("Voce bebeu a pocao e restaurou 3 pontos de vida.")
+				inv["utensilios"].remove(item)
 		else:
 			s.say("Nao pode usar isso.")
 
@@ -604,6 +611,12 @@ class GameLogic:
 		e = s.char.status["energia"]
 		emax = s.char.status["energia_max"]
 		s.char.status["energia"] = min(emax, e + amount)
+	
+	def _regen_health(self, amount: int):
+		s = self.s
+		h = s.char.status["vida"]
+		hmax = s.char.status["vida_max"]
+		s.char.status["vida"] = min(hmax, h + amount)
 
 	def _cooldowns_step(self):
 		s = self.s

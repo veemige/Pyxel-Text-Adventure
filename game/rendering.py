@@ -97,6 +97,15 @@ class GameRenderer:
 				px.pset(hx + k * 50 + 8, road_y - 10, 10)
 				px.pset(hx + k * 50 + 9, road_y - 10, 10)
 			self._draw_room_items(x, y, w, h, items)
+		elif scene == "vila":
+			px.rect(x, base - 20, w, 20, 4)
+			hx = x + 20
+			for k in range(3):
+				px.rect(hx + k * 50, base - 40, 30, 20, 5)
+				px.tri(hx + k * 50, base - 40, hx + k * 50 + 15, base - 52, hx + k * 50 + 30, base - 40, 2)
+				px.pset(hx + k * 50 + 8, base - 30, 10)
+				px.pset(hx + k * 50 + 9, base - 30, 10)
+			self._draw_room_items(x, y, w, h, items)
 
 	def _draw_room_items(self, x, y, w, h, items_in_room):
 		s = self.state
@@ -123,6 +132,12 @@ class GameRenderer:
 		elif item == "adaga":
 			px.pset(ix - 4, iy, 5)
 			px.line(ix - 3, iy, ix + 3, iy, 6)
+		elif item == "pocao de vida":
+			px.rect(ix - 2, iy - 4, 4, 6, 8)
+			px.pset(ix - 1, iy - 5, 7)
+			px.pset(ix + 1, iy - 5, 7)
+			px.line(ix - 1, iy - 2, ix + 1, iy - 2, 7)
+			px.line(ix - 1, iy + 1, ix + 1, iy + 1, 7)
 
 	def draw_console(self, x, y, w, h):
 		s = self.state

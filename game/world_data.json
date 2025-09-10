@@ -54,5 +54,13 @@
         "scene": "leste da vila",
         "region": "vila",
         "encounters_enabled": true
+    },
+    "vila": {
+        "desc": "Voce esta na vila. Apenas o som do vento, acompanhado de alguns fracos sussurros, pode ser ouvido. Apesar das vozes fracas, voce nao ve ninguem",
+        "exits": {"leste": "leste da vila", "norte": "praia"},
+        "items": ["pocao de vida"],
+        "scene": "vila",
+        "region": "vila",
+        "encounters_enabled": false
     }
 }
