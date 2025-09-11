@@ -133,11 +133,10 @@ class GameRenderer:
 			px.pset(ix - 4, iy, 5)
 			px.line(ix - 3, iy, ix + 3, iy, 6)
 		elif item == "pocao de vida":
-			px.rect(ix - 2, iy - 4, 4, 6, 8)
+			px.circ(ix - 2, iy - 4, 5, 8)
 			px.pset(ix - 1, iy - 5, 7)
 			px.pset(ix + 1, iy - 5, 7)
-			px.line(ix - 1, iy - 2, ix + 1, iy - 2, 7)
-			px.line(ix - 1, iy + 1, ix + 1, iy + 1, 7)
+			px.rect(ix - 3, iy - 14, 3, 5, 6)
 
 	def draw_console(self, x, y, w, h):
 		s = self.state

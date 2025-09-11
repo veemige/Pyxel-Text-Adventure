@@ -21,6 +21,14 @@ class Character:
             "agilidade": 1,
         }
 
+        self.equipped_weapon = None
+        self.equipped_armor = {
+            "head": None,
+            "body": None,
+            "legs": None,
+            "feet": None,
+        }
+
     def xp_to_next(self) -> int:
         lvl = self.status["nivel"]
         return 10 + (lvl - 1) * 10

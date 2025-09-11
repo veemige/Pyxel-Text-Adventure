@@ -221,10 +221,13 @@ class GameLogic:
 			_, _, item = cmd.partition(" ")
 			self.use(item.strip())
 			return
+		if cmd.startswith("equipar ") or cmd.startswith("equip "):
+			_, _, item = cmd.partition(" ")
+			self.equip(item.strip())
+			return
+
 		s.say("Nao entendi. Digite 'ajuda'.")
 
-		if cmd == "1":
-			self.room = "vila"
 
 	# --------------- Acoes ---------------
 	def describe_room(self):
@@ -296,6 +299,46 @@ class GameLogic:
 				inv["utensilios"].remove(item)
 		else:
 			s.say("Nao pode usar isso.")
+	
+	def equip(self, item: str):
+		s = self.s
+		if not item:
+			s.say("Equipar o que?")
+			return
+		inv = s.char.inventory
+		info = s.item_map.get(item, {})
+		dano = info.get("dano", 0)
+		if item in inv["armas"]:
+			if s.char.equipped_weapon == item:
+				s.say(f"{item} ja esta equipado.")
+				return
+			s.char.equipped_weapon = item
+			if dano > 0:
+				s.char.status["forca"] += dano
+				s.say(f"Voce equipou  {item}, ganhando +{dano} de forca.")
+			else:
+				s.say(f"Voce equipou  {item}.")
+		elif item in inv["armaduras"]:
+			slot = info.get("slot")
+			defesa = info.get("defesa", 0)
+			if not slot:
+				s.say(f"{item} nao pode ser equipado.")
+				return
+			if s.char.equipped_armor.get(slot) == item:
+				s.say(f"{item} ja esta equipado.")
+				return
+			prev = s.char.equipped_armor.get(slot)
+			if prev and defesa > 0:
+				s.char.status["defesa"] -= info.get("defesa", 0)
+				s.say(f"Voce removeu {prev}, perdendo -{defesa} de defesa.")
+			s.char.equipped_armor[slot] = item
+			if defesa > 0:
+				s.char.status["defesa"] += defesa
+				s.say(f"Voce equipou {item}, ganhando +{defesa} de defesa.")
+			else:
+				s.say(f"Voce equipou {item}.")
+		else:
+			s.say("Voce nao tem isso para equipar.")
 
 	def enter_room(self, new_room: str):
 		s = self.s
