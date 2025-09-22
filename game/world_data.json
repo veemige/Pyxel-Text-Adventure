@@ -33,7 +33,7 @@
     },
     "interior da caverna": {
         "desc": "Voce esta dentro de uma caverna escura. Ha um brilho fraco vindo de uma abertura ao norte.",
-        "exits": {"norte": "planicie"},
+        "exits": {"sul": "caverna", "norte": "planicie"},
         "items": ["capacete de mineiro"],
         "scene": "interior da caverna",
         "region": "caverna",
