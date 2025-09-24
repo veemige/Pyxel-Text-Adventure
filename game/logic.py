@@ -225,8 +225,43 @@ class GameLogic:
 			_, _, item = cmd.partition(" ")
 			self.equip(item.strip())
 			return
+		if cmd.startswith("atribuir "):
+			parts = cmd.split()
+			if len(parts) != 3:
+				s.say("Use: atribuir <vida|forca|defesa> <quantidade>")
+				return
+			_, attr, qty_str = parts
+			if attr not in ("vida", "forca", "defesa"):
+				s.say("Atributo invalido. Use: vida | forca | defesa")
+				return
+			try:
+				qty = int(qty_str)
+				if qty <= 0:
+					s.say("Quantidade deve ser positiva.")
+					return
+			except ValueError:
+				s.say("Quantidade invalida. Use um numero inteiro.")
+				return
+			if s.char.status["pontos"] < qty:
+				s.say(f"Voce so tem {s.char.status['pontos']} ponto(s) disponivel(is).")
+				return
+			if attr == "vida":
+				s.char.status["vida_max"] += qty * 2
+				s.char.status["vida"] += qty * 2
+			elif attr == "forca":
+				s.char.status["forca"] += qty
+			elif attr == "defesa":
+				s.char.status["defesa"] += qty
+			s.char.status["pontos"] -= qty
+			s.say(f"Atribuidos {qty} ponto(s) em {attr}.")
+			return
 
 		s.say("Nao entendi. Digite 'ajuda'.")
+
+		if cmd.startswith("descricao ") or cmd.startswith("desc "):
+			_, _, item = cmd.partition(" ")
+			self.desc_item(item.strip())
+			return
 
 
 	# --------------- Acoes ---------------
@@ -339,6 +374,12 @@ class GameLogic:
 				s.say(f"Voce equipou {item}.")
 		else:
 			s.say("Voce nao tem isso para equipar.")
+	
+	def desc_item(self, item: str):
+		s = self.s
+		info = s.item_map.get(item, {})
+		desc = info.get("desc", "Descricao nao encontrada.")
+		s.say(desc)
 
 	def enter_room(self, new_room: str):
 		s = self.s

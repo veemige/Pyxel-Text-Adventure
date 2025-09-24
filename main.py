@@ -113,7 +113,7 @@ class App:
         # Som simples para teste
         s = px.sound(0)
         # notas, timbre (s: square), volume (0-7), efeito (n: none), speed (ticks)
-        s.set("c2d2e2g2c3", "s", "77777", "n", 25)
+        s.set("c2d2e2g2c3", "s", "76767", "n", 25)
         # Música 0 tocando sfx 0 no canal 0
         m = px.music(0)
         m.set([[0]])
