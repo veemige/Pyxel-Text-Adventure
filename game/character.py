@@ -9,16 +9,11 @@ class Character:
             "comuns": []
         }
         self.status = {
-            "vida": 10,
-            "vida_max": 10,
-            "forca": 1,
-            "defesa": 1,
-            "nivel": 1,
-            "experiencia": 0,
-            "pontos": 0,
-            "energia": 5,
-            "energia_max": 5,
-            "agilidade": 1,
+            "vida": 10, "vida_max": 10,
+            "energia": 3, "energia_max": 3,
+            "forca": 1, "defesa": 1,
+            "nivel": 1, "experiencia": 0, "pontos": 0,
+            "moedas": 0,
         }
 
         self.equipped_weapon = None
@@ -84,15 +79,16 @@ class Character:
         return room in self.visited_rooms
 
     # --------- Serializacao para save/load ---------
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self):
+        d = {
             "name": self.name,
             "visited_rooms": list(self.visited_rooms),
             "inventory": self.inventory,
             "status": self.status,
         }
+        return d
 
-    def from_dict(self, data: dict):
+    def from_dict(self, data):
         self.name = data.get("name", self.name)
         vr = data.get("visited_rooms", [])
         self.visited_rooms = set(vr)
@@ -105,7 +101,4 @@ class Character:
                 "armaduras": inv.get("armaduras", []),
                 "comuns": inv.get("comuns", []),
             }
-        st = data.get("status")
-        if isinstance(st, dict):
-            # Mantem campos conhecidos, sem quebrar saves antigos
-            self.status.update(st)
+        self.status.update(data.get("status", {}))

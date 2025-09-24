@@ -1,27 +1,13 @@
-# Pyxel Text Adventure
+# CORPO SECO — Pyxel Text Adventure
 
-Projeto em Python usando Pyxel (engine retro) com layout de aventura de texto:
-- Metade superior: cenario pixelizado.
-- Metade inferior: console de texto com historico, quebra de linha e prompt.
+Aventura de texto com visual retro (Pyxel). Metade de cima desenha a cena; metade de baixo é um console com histórico e prompt.
 
-## Recursos
-- Janela 320x240 (4:3) e paleta com texto verde (indice 11 ajustado para 0x00FF00).
-- Console com historico, quebra de linha por palavras, cursor piscando.
-- Entrada de teclado: letras a-z, digitos 0-9, espaco, backspace com repeticao, Enter.
-- Comandos de jogo:
-	- `ajuda | help | ?` — lista os comandos.
-	- `olhar | look | l` — descreve a sala atual.
-	- `ir | go <norte/sul/leste/oeste>` — move entre salas.
-	- `pegar | take <item>` — coleta itens do local.
-	- `inventario | inv | i` — mostra o que voce carrega.
-	- `limpar | clear | cls` — limpa o historico do console.
-- Mundo inicial com 3 salas: `praia`, `floresta`, `caverna` e itens `concha`, `tocha`.
-- Cenas simples desenhadas por codigo (sol e mar, arvores, entrada da caverna).
+• Resolução: `320x240`  • Divisória: `SPLIT_Y = 120`  • Cor do texto: índice `11` (verde)
 
-Observacao: As mensagens do jogo estao em ASCII (sem acentos) para compatibilidade com a fonte padrao do Pyxel.
+Observação: os textos em jogo (console) usam ASCII simples (sem acentos). Este README usa acentos normalmente.
 
 ## Como executar
-Requisitos: Python 3.x e Pyxel instalado.
+Requisitos: Python 3.x e Pyxel.
 
 Windows PowerShell:
 
@@ -32,20 +18,177 @@ python .\main.py
 
 Atalhos do Pyxel: `ESC` para sair, `ALT+ENTER` para alternar tela cheia (se suportado).
 
-## Estrutura
+## Comandos do jogo (exploração)
+- `ajuda | help | ?` — lista os comandos disponíveis.
+- `olhar | look | l` — descreve a sala atual, itens e saídas.
+- `ir | go <norte/sul/leste/oeste/...>` — move para uma saída da sala.
+- `pegar | take <item>` — pega um item do chão para o inventário.
+- `inventario | inv | i` — mostra inventário por categorias.
+- `descricao | desc <item>` — mostra a descrição do item.
+- `usar | use <item>` — usa um utensílio/consumível (ex.: tocha, poção de vida).
+- `equipar | equip <item>` — equipa arma/armadura (aplica bônus de dano/defesa).
+- `status | info` — mostra atributos, XP, nível, pontos e efeitos ativos.
+- `visitadas | visited` — lista as salas que você já visitou.
+- `limpar | clear | cls` — limpa o histórico do console.
+- `salvar` — salva a sessão em `savegame.json`.
+- `sair | exit | quit` — salva e fecha o jogo.
+
+Menu inicial:
+- `entrar` — entra no jogo na sala `praia` (ou defina um nome digitando e depois use `entrar`).
+- `nome <novo>` — altera seu nome ainda no menu.
+
+Comandos de debug (opcionais):
+- `encontros` — mostra se encontros estão ativos na sala, região e encontros elegíveis.
+- `forcar encontro <id>` — dispara um encontro específico imediatamente.
+- `chance <0..1>` — ajusta a chance base de encontros aleatórios (padrão `0.25`).
+- Atalho: segurar `SHIFT` dá `+10 XP` (debug).
+
+## Mecânicas principais
+
+### Progressão, XP e Level Up
+- XP por exploração: ao entrar em uma sala pela primeira vez você ganha `+2 XP`.
+- XP por combate: ao vencer, ganha XP proporcional ao inimigo: `xp = max(1, max_hp // 2 + atk)`.
+- Níveis: XP para próximo nível é linear: `10, 20, 30, ...` (fórmula: `10 + 10*(nível-1)`).
+- Ao subir de nível: `+2 pontos de habilidade`, `+2 vida máxima` e vida totalmente restaurada.
+
+Pontos de habilidade (distribuição via comando):
+- `atribuir <vida|forca|defesa> <qtd>`
+	- `vida`: cada ponto dá `+2 vida máxima` e cura `+2` imediatamente.
+	- `forca`: cada ponto dá `+1` de Força.
+	- `defesa`: cada ponto dá `+1` de Defesa.
+
+Atributos relevantes do personagem:
+- `vida/vida_max`, `forca`, `defesa`, `nivel`, `experiencia`, `pontos` (distribuíveis), `energia/energia_max`, `agilidade`.
+
+### Itens, inventário, uso e equipamento
+Categorias de inventário: `utensilios`, `armas`, `armaduras`, `comuns`.
+- `pegar <item>` move o item da sala para a categoria adequada.
+- `usar <item>` aplica efeitos de utensílios/consumíveis.
+	- `tocha`: ativa efeito de iluminação (`effects`), necessário para entrar em “interior da caverna”.
+	- `pocao de vida`: recupera `3` de vida e é consumida.
+- `equipar <item>` aplica bônus:
+	- Armas: aumentam `forca` em `dano` do item enquanto equipadas.
+	- Armaduras: aumentam `defesa` conforme o `slot` (`head/body/legs/feet`).
+
+Comando de inspeção:
+- `descricao <item>` — imprime a descrição cadastrada do item.
+
+### Encontros (aleatórios e programados)
+- Encontros aleatórios acontecem ao entrar numa sala com `"encounters_enabled": true` e passam em um teste de probabilidade (`encounter_chance`, padrão `0.25`).
+- Elegibilidade por região/sala e nível: cada encontro define `regions` e opcional `rooms`, além de `min_level/max_level`.
+- Escolha ponderada: entre os elegíveis, o jogo escolhe 1 encontro pelo seu `weight` relativo.
+- Encontros programados por sala: `SCRIPTED_BY_ROOM` mapeia eventos com `id`, `type`, `min_level`, `handler` e `once` (se `true`, acontece só uma vez por sessão; usa flags internas).
+
+Fluxo ao entrar em uma sala:
+1) Ganha XP se for a primeira visita (uma única vez por sala).
+2) Descrição da sala, itens e saídas.
+3) Encontros programados elegíveis (e não repetidos quando `once`).
+4) Possível encontro aleatório se a sala permitir e a rolagem de chance passar.
+
+Encontros disponíveis (arquivo `game/encounters.py`):
+- `mercador_costeiro` (npc) — regiões: praia/planície/vila — `weight: 1` (para menus de compra no futuro).
+- `caranguejo` (enemy) — região: praia — `min_level: 1`, `max_level: 3`, `weight: 3`.
+- `lobo` (enemy) — regiões: floresta/planície — `min_level: 2`, `weight: 2`.
+- `morcego` (enemy) — região: caverna — `min_level: 1`, `weight: 2`.
+
+Evento programado exemplo:
+- Sala `interior da caverna` → `minero_intro` (`once: true`) chama `script_miner` (mensagem narrativa).
+
+### Combate tático simples
+Inicia em encontros de tipo `enemy`.
+
+Ações do jogador:
+- `atacar` (normal): chance de acerto ~85%, multiplicador de dano `1.0`, custo de energia `2`.
+- `leve`: ~95% de acerto, multiplicador `0.7`, custo `1`.
+- `pesado`: ~65% de acerto, multiplicador `1.8`, custo `3`.
+- `defender`: aplica guarda por 1 turno (reduz cerca de metade do dano recebido), regenera `+2` de energia.
+- `sangrar`: requer arma cortante (ex.: `adaga` no inventário), custo `2`, aplica status `sangrando (3)` no inimigo, recarga `3` turnos.
+- `atordoar`: custo `3`, chance base `45%` (+10% se possuir qualquer arma), aplica `atordoado (1)`, recarga `4` turnos.
+- `usar <item>`: consome o turno, aplica efeito (se aplicável), então o inimigo age.
+- `fugir`: 50% de chance de escapar; se falhar, o inimigo age.
+
+Detalhes:
+- Dano: usa `forca` (com bônus de arma) e defesa do inimigo; 10% de crítico (+1 dano).
+- Status inimigo: `sangrando` (drena 1 de HP por turno por N turnos), `atordoado` (perde 1 turno).
+- Energia: ações gastam energia; o turno inimigo e algumas ações regeneram energia.
+- Fim do combate: vitória concede XP; derrota encerra com mensagem e você pode morrer.
+
+### Morte, salvar e carregar
+- Se `vida <= 0`, a tela indica sua morte; pressione `Enter` para carregar o último save.
+- `salvar` grava `savegame.json` com: personagem, sala atual, salas, flags de encontros, efeitos ativos e estado do menu.
+- `sair` salva e encerra o jogo.
+
+## Mundo (salas, regiões, encontros)
+As salas ficam em `game/world_data.json`.
+
+Campos de sala:
+- `desc`, `exits`, `items`, `scene`, `region`, `encounters_enabled`.
+
+Salas existentes:
+- `menu` — região: menu — encontros: OFF
+- `praia` — saídas: `norte: floresta`, `leste: caverna` — região: praia — encontros: OFF — itens: `concha`
+- `floresta` — saídas: `sul: praia`, `norte: floresta profunda` — região: floresta — encontros: ON — itens: `galho`
+- `caverna` — saídas: `oeste: praia`, `entrada: interior da caverna` — região: caverna — encontros: ON — itens: `tocha`
+- `interior da caverna` — saídas: `sul: caverna`, `norte: planicie` — região: caverna — encontros: ON — itens: `capacete de mineiro`
+	- Requer efeito `tocha` ativo para entrar (use a tocha antes).
+- `planicie` — saídas: `sul: interior da caverna`, `oeste: floresta profunda`, `norte: leste da vila` — região: planicie — encontros: ON — itens: (nenhum)
+- `floresta profunda` — saídas: `sul: floresta`, `leste: planicie`, `norte: vila` — região: floresta — encontros: ON — itens: `galho`
+- `leste da vila` — saídas: `sul: planicie`, `oeste: vila` — região: vila — encontros: ON — itens: `adaga`
+- `vila` — saídas: `leste: leste da vila`, `norte: praia` — região: vila — encontros: OFF — itens: `pocao de vida`
+
+## Itens (definições e locais iniciais)
+Arquivo: `game/item_data.json`.
+
+Definições:
+- `concha` — tipo: comum — "Uma concha do mar."
+- `galho` — tipo: arma — dano `0.5` — "Um galho seco."
+- `tocha` — tipo: utensílio — efeito: ilumina o ambiente (ativa efeito `tocha`).
+- `adaga` — tipo: arma — dano `1.0` — "Uma adaga afiada."
+- `pocao de vida` — tipo: consumível — restaura 3 de vida.
+- `capacete de mineiro` — tipo: armadura — `defesa: 1.0` — `slot: head`.
+
+Posições iniciais (coordenadas de desenho na cena):
+- `praia`: `concha` em `(160, 108)`
+- `floresta`: `galho` em `(40, 112)`
+- `leste da vila`: `adaga` em `(200, 104)`
+- `vila`: `pocao de vida` em `(200, 104)`, `tocha` em `(190, 102)`
+- `interior da caverna`: `capacete de mineiro` em `(120, 90)`
+
+## Interface e renderização
+- Metade superior desenha a cena com formas simples (sol, mar, árvores, casas, cavernas, etc.).
+- Os itens são desenhados com sprites minimalistas gerados por código nas posições do JSON.
+- Metade inferior exibe o console com histórico, quebra de linha por palavras e cursor piscando.
+
+## Customização rápida
+- Salas/mundo: edite `game/world_data.json` (adicione chaves `region` e `encounters_enabled` nas salas novas).
+- Itens: edite `game/item_data.json` (`definitions` e `positions`).
+- Encontros: edite `game/encounters.py` (tabela `ENCOUNTERS`) e ajuste regiões/nível/`weight`.
+- Eventos programados: `SCRIPTED_BY_ROOM` (use `once: true` para disparar uma única vez por sessão).
+- Probabilidade de encontros: ajuste em tempo de execução com `chance <valor>` ou altere `encounter_chance` padrão em `game/state.py`.
+
+## Estrutura do projeto
 ```
-main.py      # codigo do jogo
-README.md    # este arquivo
+Pyxel-Text-Adventure/
+	main.py
+	game/
+		constants.py
+		state.py
+		logic.py
+		rendering.py
+		render.py
+		font.py
+		character.py
+		items.py
+		item_data.json
+		world.py
+		world_data.json
+		encounters.py
 ```
 
-## Acentos e fonte customizada (opcional)
-O jogo inclui um caminho opcional para renderizar acentos via atlas bitmap (mapa `EXT_FONT_MAP`).
-Se voce quiser usar acentos mais tarde, adicione um `assets.pyxres` com os glifos 4x6 na imagem 0
-nas coordenadas indicadas no mapa e altere os textos para incluir os caracteres acentuados.
+## Problemas conhecidos e dicas
+- Entrar em `interior da caverna` exige o efeito `tocha` ativo: use `usar tocha` antes.
+- Fugir pode falhar (50%). Guarde energia para habilidades.
+- Para depurar encontros, use `encontros` e `forcar encontro <id>`.
 
-## Proximos passos
-- Adicionar mais salas, puzzles e estados.
-- Comandos extra: usar/abrir/examinar.
-- Salvar/carregar jogo.
-- Fonte personalizada com acentos (via atlas) ou UI com tilemap.
-- Sons/efeitos e pequenas animacoes no cenario.
+---
+Divirta-se explorando, lutando e evoluindo no mundo de CORPO SECO!

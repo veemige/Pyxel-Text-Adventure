@@ -17,7 +17,7 @@
     },
     "floresta": {
         "desc": "Arvores densas bloqueiam parte da luz noturna. Ha um cheiro de terra molhada.",
-        "exits": {"sul": "praia"},
+        "exits": {"sul": "praia", "norte": "floresta profunda"},
         "items": ["galho"],
         "scene": "floresta",
         "region": "floresta",
@@ -41,10 +41,18 @@
     },
     "planicie": {
         "desc": "Voce chegou a uma planicie aberta com grama rala. O ceu estrelado se estende acima de voce.",
-        "exits": {"sul": "interior da caverna", "oeste": "floresta", "norte": "leste da vila"},
+        "exits": {"sul": "interior da caverna", "oeste": "floresta profunda", "norte": "leste da vila"},
         "items": [],
         "scene": "planicie",
         "region": "planicie",
+        "encounters_enabled": true
+    },
+    "floresta profunda": {
+        "desc": "A floresta aqui e densa e escura. O som de animais noturnos pode ser ouvido ao longe.",
+        "exits": {"sul": "floresta", "leste": "planicie", "norte": "vila"},
+        "items": ["galho"],
+        "scene": "floresta profunda",
+        "region": "floresta",
         "encounters_enabled": true
     },
     "leste da vila": {

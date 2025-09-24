@@ -6,6 +6,12 @@ ENCOUNTERS = {
         "regions": ["praia", "planicie", "vila"],
         "min_level": 1,
         "weight": 1,
+        # Inventário da loja (item: preco). Se ausente, cai no item_map.preco
+        "shop": {
+            "pocao de vida": 5,
+            "adaga": 12,
+            "armadura leve": 25,
+         },
     },
     "caranguejo": {
         "type": "enemy",
@@ -14,6 +20,11 @@ ENCOUNTERS = {
         "max_level": 3,
         "weight": 3,
         "enemy": {"name": "Caranguejo", "base_hp": 4, "atk": 1},
+        # Drop de ouro e itens
+        "gold_drop": [1, 3],
+        "drops": [
+            {"item": "concha", "chance": 0.5, "min": 1, "max": 1},
+        ],
     },
     "lobo": {
         "type": "enemy",
@@ -21,6 +32,10 @@ ENCOUNTERS = {
         "min_level": 2,
         "weight": 2,
         "enemy": {"name": "Lobo", "base_hp": 6, "atk": 2},
+        "gold_drop": [2, 5],
+        "drops": [
+            {"item": "couro", "chance": 0.45, "min": 1, "max": 2},
+        ],
     },
     "morcego": {
         "type": "enemy",
@@ -28,6 +43,10 @@ ENCOUNTERS = {
         "min_level": 1,
         "weight": 2,
         "enemy": {"name": "Morcego", "base_hp": 3, "atk": 1},
+        "gold_drop": [1, 2],
+        "drops": [
+            {"item": "dente", "chance": 0.35, "min": 1, "max": 1},
+        ],
     },
 }
 

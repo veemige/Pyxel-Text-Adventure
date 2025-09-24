@@ -8,6 +8,8 @@ from .encounters import weighted_choice as enc_weighted_choice
 class GameLogic:
 	def __init__(self, state):
 		self.s = state
+		# Loja: razão de venda (50% do preço)
+		self.shop_sell_ratio = 0.5
 
 	# --------------- Loop ---------------
 	def update(self):
@@ -45,6 +47,32 @@ class GameLogic:
 	# --------------- Comandos ---------------
 	def process_command(self, cmd: str):
 		s = self.s
+		# --- Comandos quando dentro da loja ---
+		if getattr(s, "in_shop", False):
+			if cmd in ("ajuda", "help", "?"):
+				s.say("Loja: lista | comprar <item> [qtd] | vender <item> [qtd] | sair")
+				return
+			if cmd == "lista":
+				self._shop_list()
+				return
+			if cmd.startswith("comprar "):
+				parts = cmd.split()
+				item = " ".join(parts[1:-1]) if parts[-1].isdigit() else " ".join(parts[1:])
+				qty = int(parts[-1]) if parts[-1].isdigit() else 1
+				self._shop_buy(item.strip(), max(1, qty))
+				return
+			if cmd.startswith("vender "):
+				parts = cmd.split()
+				item = " ".join(parts[1:-1]) if parts[-1].isdigit() else " ".join(parts[1:])
+				qty = int(parts[-1]) if parts[-1].isdigit() else 1
+				self._shop_sell(item.strip(), max(1, qty))
+				return
+			if cmd in ("sair", "fechar", "exit"):
+				self._shop_close()
+				return
+			s.say("Na loja: use lista | comprar <item> [qtd] | vender <item> [qtd] | sair")
+			return
+
 		if s.room == "menu":
 			if s.awaiting_name:
 				if cmd in ("ajuda", "help", "?"):
@@ -210,13 +238,16 @@ class GameLogic:
 			vida = s.char.status["vida"]; vmax = s.char.status["vida_max"]
 			forca = s.char.status["forca"]; defesa = s.char.status["defesa"]
 			energia = s.char.status["energia"]; emax = s.char.status["energia_max"]
+			moedas = s.char.status.get("moedas", 0)
 			s.say(f"Nome: {s.char.name}")
 			s.say(f"Localizacao: {s.room}")
 			s.say(f"Nivel {lvl} | XP {xp}/{to_next} | Pontos {pts}")
+			s.say(f"Nivel {lvl} | XP {xp}/{to_next} | Pontos {pts} | Moedas {moedas}")
 			s.say(f"Atributos: Vida {vida}/{vmax}, Forca {forca}, Defesa {defesa}, Energia {energia}/{emax}")
 			effects = ", ".join(sorted(s.effects)) if s.effects else "nenhum"
 			s.say(f"Efeitos: {effects}")
 			return
+		
 		if cmd.startswith("usar ") or cmd.startswith("use "):
 			_, _, item = cmd.partition(" ")
 			self.use(item.strip())
@@ -256,12 +287,12 @@ class GameLogic:
 			s.say(f"Atribuidos {qty} ponto(s) em {attr}.")
 			return
 
-		s.say("Nao entendi. Digite 'ajuda'.")
-
 		if cmd.startswith("descricao ") or cmd.startswith("desc "):
 			_, _, item = cmd.partition(" ")
 			self.desc_item(item.strip())
 			return
+
+		s.say("Nao entendi. Digite 'ajuda'.")
 
 
 	# --------------- Acoes ---------------
@@ -305,8 +336,6 @@ class GameLogic:
 			else:
 				inv["comuns"].append(item)
 			s.say(f"Voce pegou a {item}.")
-			for m in s.char.gain_xp(3):
-				s.say(m)
 		else:
 			s.say("Nao vejo isso aqui.")
 
@@ -327,7 +356,7 @@ class GameLogic:
 					s.say("A tocha ja esta acesa.")
 				else:
 					s.effects.add("tocha")
-					s.say("A tocha agora esta acesa. Voce pode entrar na caverna.")
+					s.say("A tocha agora esta acesa.")
 			elif item == "pocao de vida":
 				self._regen_health(3)
 				s.say("Voce bebeu a pocao e restaurou 3 pontos de vida.")
@@ -384,7 +413,7 @@ class GameLogic:
 	def enter_room(self, new_room: str):
 		s = self.s
 		if new_room == "interior da caverna" and "tocha" not in s.effects:
-			s.say("Esta muito escuro para entrar. Use a tocha primeiro: 'usar tocha'.")
+			s.say("Esta muito escuro para entrar.")
 			return
 		s.room = new_room
 		if new_room not in s.char.visited_rooms:
@@ -514,7 +543,10 @@ class GameLogic:
 
 	def _enc_npc(self, eid, e):
 		self.s.say("Um mercador aparece na estrada, oferecendo seus produtos.")
-		self.s.say("Dica: voce pode implementar aqui um menu de compra ('comprar <item>').")
+		self.s.say("Ele vende: pocao de vida | adaga | armadura leve")
+		s = self.s
+		s.say("Um mercador aparece na estrada, oferecendo seus produtos.")
+		self._shop_open(vendor_id=eid, encounter=e)
 
 	def _enc_enemy(self, eid, e):
 		data = e.get("enemy", {})
@@ -672,9 +704,29 @@ class GameLogic:
 			base_hp = s.enemy.get("max_hp", 5)
 			atk = s.enemy.get("atk", 1)
 			xp = max(1, base_hp // 2 + atk)
-			s.say(f"Vitoria! Você ganha {xp} XP.")
+			s.say(f"Voce venceu. Voce ganha {xp} XP.")
 			for m in s.char.gain_xp(xp):
 				s.say(m)
+			# Loot (ouro e itens) com base no encontro
+			enc_id = s.enemy.get("id")
+			enc_def = s.encounters.get(enc_id, {})
+			# Ouro
+			gmin, gmax = enc_def.get("gold_drop", [0, 0])
+			if gmax > 0:
+				amt = random.randint(gmin, gmax)
+				if amt > 0:
+					s.char.status["moedas"] = s.char.status.get("moedas", 0) + amt
+					s.say(f"Voce saqueia {amt} moeda(s).")
+			# Itens
+			for drop in enc_def.get("drops", []) or []:
+				try:
+					if random.random() <= float(drop.get("chance", 0)):
+						qmin = int(drop.get("min", 1)); qmax = int(drop.get("max", qmin))
+						qty = random.randint(qmin, qmax)
+						self._give_item(drop["item"], qty)
+						s.say(f"Drop: {drop['item']} x{qty}")
+				except Exception:
+					continue
 		else:
 			s.say("Combate encerrado.")
 		s.in_combat = False
@@ -682,35 +734,102 @@ class GameLogic:
 		s.player_status.clear()
 		self._regen_energy(1)
 
-	# ---------- Utilidades de combate ----------
-	def _spend_energy(self, cost: int) -> bool:
+	# --------- Loja (helpers) ---------
+	def _shop_open(self, vendor_id: str, encounter: dict):
 		s = self.s
-		if s.char.status["energia"] < cost:
-			return False
-		s.char.status["energia"] -= cost
-		return True
+		s.in_shop = True
+		s.shop_vendor = vendor_id
+		# Inventário da loja: def do encontro + fallback
+		s.shop_prices = dict(encounter.get("shop", {}))
+		s.say("Loja aberta. Comandos: lista | comprar <item> [qtd] | vender <item> [qtd] | sair")
+		self._shop_list()
 
-	def _regen_energy(self, amount: int):
+	def _shop_close(self):
 		s = self.s
-		e = s.char.status["energia"]
-		emax = s.char.status["energia_max"]
-		s.char.status["energia"] = min(emax, e + amount)
-	
-	def _regen_health(self, amount: int):
-		s = self.s
-		h = s.char.status["vida"]
-		hmax = s.char.status["vida_max"]
-		s.char.status["vida"] = min(hmax, h + amount)
+		s.in_shop = False
+		s.shop_vendor = None
+		s.shop_prices = {}
+		s.say("Voce se despede do mercador.")
 
-	def _cooldowns_step(self):
+	def _shop_list(self):
 		s = self.s
-		if not s.skill_cd:
+		if not getattr(s, "shop_prices", None):
+			s.say("O mercador nao tem nada a venda.")
 			return
-		for k in list(s.skill_cd.keys()):
-			if s.skill_cd[k] > 0:
-				s.skill_cd[k] -= 1
-			if s.skill_cd[k] <= 0:
-				s.skill_cd[k] = 0
+		lines = []
+		for item, preco in s.shop_prices.items():
+			lines.append(f"- {item}: {preco} moedas")
+		s.say("A venda:")
+		for ln in lines:
+			s.say(ln)
+		s.say(f"Suas moedas: {s.char.status.get('moedas', 0)}")
+
+	def _shop_buy(self, item: str, qty: int):
+		s = self.s
+		if item not in s.shop_prices:
+			# Se não estiver na lista do vendedor, não vende
+			s.say(f"O mercador nao vende '{item}'.")
+			return
+		price_each = int(s.shop_prices[item])
+		total = price_each * qty
+		coins = s.char.status.get("moedas", 0)
+		if coins < total:
+			s.say(f"Moedas insuficientes ({coins}/{total}).")
+			return
+		for _ in range(qty):
+			self._give_item(item, 1)
+		s.char.status["moedas"] = coins - total
+		s.say(f"Comprado: {item} x{qty} por {total} moedas. Restam {s.char.status['moedas']}.")
+
+	def _shop_sell(self, item: str, qty: int):
+		s = self.s
+		owned = self._count_item(item)
+		if owned <= 0:
+			s.say(f"Voce nao possui '{item}'.")
+			return
+		qty = min(qty, owned)
+		# Preço base: do item_map ou do preço da loja (se existir)
+		info = s.item_map.get(item, {})
+		base_price = info.get("preco", s.shop_prices.get(item, 0))
+		if base_price <= 0:
+			s.say(f"O mercador nao compra '{item}'.")
+			return
+		price_each = max(1, int(base_price * self.shop_sell_ratio))
+		total = price_each * qty
+		self._remove_item(item, qty)
+		s.char.status["moedas"] = s.char.status.get("moedas", 0) + total
+		s.say(f"Vendido: {item} x{qty} por {total} moedas. Agora voce tem {s.char.status['moedas']}.")
+
+	# --------- Inventário util ---------
+	def _give_item(self, item: str, qty: int):
+		s = self.s
+		info = s.item_map.get(item, {"tipo": "comum"})
+		tipo = info.get("tipo", "comum")
+		for _ in range(qty):
+			if tipo == "utensilio":
+				s.char.inventory["utensilios"].append(item)
+			elif tipo == "arma":
+				s.char.inventory["armas"].append(item)
+			elif tipo == "armadura":
+				s.char.inventory["armaduras"].append(item)
+			else:
+				s.char.inventory["comuns"].append(item)
+
+	def _count_item(self, item: str) -> int:
+		s = self.s
+		return sum(1 for l in s.char.inventory.values() for it in l if it == item)
+
+	def _remove_item(self, item: str, qty: int):
+		s = self.s
+		for key in ("utensilios", "armas", "armaduras", "comuns"):
+			lst = s.char.inventory[key]
+			i = 0
+			while i < len(lst) and qty > 0:
+				if lst[i] == item:
+					lst.pop(i)
+					qty -= 1
+				else:
+					i += 1
 
 	# ---------- Keymaps ----------
 	def _alpha_keymap(self):
