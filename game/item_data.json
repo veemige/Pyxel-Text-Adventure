@@ -5,13 +5,19 @@
         "tocha": {"tipo": "utensilio", "desc": "Uma tocha com um fraco e estranho brilho.", "efeito": "ilumina o ambiente"},
         "adaga": {"tipo": "arma", "desc": "Uma adaga afiada.", "dano": 1.0},
         "pocao de vida": {"tipo": "consumivel", "desc": "Uma pocao que restaura 3 pontos de vida.", "efeito": "restaura 3 pontos de vida"},
-        "capacete de mineiro": {"tipo": "armadura", "desc": "Um capacete de mineiro.", "defesa": 1.0, "slot": "head"}
+        "capacete de mineiro": {"tipo": "armadura", "desc": "Um capacete de mineiro.", "defesa": 1.0, "slot": "head"},
+        "remo": {"tipo": "utensilio", "desc": "Um remo de madeira desgastado.", "efeito": "permite navegar em areas com um barco"},
+        "camiseta do e-colab": {"tipo": "armadura", "desc": "Uma camiseta do e-colab.", "defesa": 20, "slot": "torso"},
+        "couro": {"tipo": "comum", "desc": "Um pedaço de couro resistente."},
+        "dente": {"tipo": "comum", "desc": "Um dente afiado."},
+        "vara de pesca": {"tipo": "arma", "desc": "Uma vara de pesca simples.", "dano": 1.2}
     },
     "positions": {
         "praia": {"concha": [160, 108]},
         "floresta": {"galho": [40, 112]},
+        "floresta profunda": {"galho": [40, 112]},
         "leste da vila": {"adaga": [200, 104]},
         "vila": {"pocao de vida": [200, 104], "tocha": [190, 102]},
-        "interior da caverna": {"capacete de mineiro": [120, 90]}
+        "caverna": {"capacete de mineiro": [120, 90], "remo": [130, 90]}
     }
 }

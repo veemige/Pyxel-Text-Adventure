@@ -60,7 +60,7 @@ class GameRenderer:
 				px.rect(tx, base - 25, 6, 25, 4)
 				px.tri(tx - 10, base - 10, tx + 3, base - 75, tx + 16, base - 10, 11)
 			self._draw_room_items(x, y, w, h, items)
-		elif scene == "caverna":
+		elif scene == "entrada da caverna":
 			px.tri(cx - 70, base, cx - 40, base - 70, cx - 25, base, 0)
 			px.tri(cx + 25, base, cx + 40, base - 70, cx + 70, base, 0)
 			px.tri(cx - 35, base, cx, base - 90, cx + 35, base, 0)
@@ -68,7 +68,7 @@ class GameRenderer:
 			px.rect(x, y + h - 30, w, 30, 3)
 			px.rect(x, base, w, 30, 3)
 			self._draw_room_items(x, y, w, h, items)
-		elif scene == "interior da caverna":
+		elif scene == "caverna":
 			px.rect(x, y, w, h, 0)
 			for i in range(0, w, 20):
 				px.tri(x + i, y, x + i + 8, y + 14, x + i + 16, y, 1)
@@ -106,6 +106,27 @@ class GameRenderer:
 				px.pset(hx + k * 50 + 8, base - 30, 10)
 				px.pset(hx + k * 50 + 9, base - 30, 10)
 			self._draw_room_items(x, y, w, h, items)
+		elif scene == "floresta profunda":
+			for i in range(7):
+				tx = x + 10 + i * 40
+				px.rect(tx, base - 25, 6, 25, 4)
+				px.tri(tx - 10, base - 10, tx + 3, base - 75, tx + 16, base - 10, 11)
+			self._draw_room_items(x, y, w, h, items)
+		elif scene == "rio":
+			px.rect(x, base - 20, w, 20, 1)
+			for i in range(0, w, 20):
+				px.tri(x + i, base - 10, x + i + 8, base - 22, x + i + 16, base - 10, 3)
+			# barco
+			px.rect(cx - 20, base - 5, 40, 7, 9)
+			px.tri(cx - 25, base - 5, cx, base + 1, cx + 25, base - 5, 9)
+			px.line(cx, base - 5, cx, base - 3, 7)
+			px.line(cx - 20, base - 5, cx - 20, base - 3, 7)
+			self._draw_room_items(x, y, w, h, items)
+		elif scene == "end":
+			px.rect(x, y, w, h, 1)
+			px.rect(x, y + h - 30, w, 30, 3)
+			self.draw_pixel_text(cx - 60, base - 50, "Continua...", 10, scale=3)
+			self.draw_pixel_text(cx - 60, base - 20, "Feito por Joao Melo", 7, scale=1)
 
 	def _draw_room_items(self, x, y, w, h, items_in_room):
 		s = self.state
@@ -127,8 +148,8 @@ class GameRenderer:
 			px.pset(ix + 2, iy - 3, 11)
 		elif item == "tocha":
 			px.rect(ix - 1, iy, 3, 8, 4)
-			px.tri(ix - 3, iy, ix + 3, iy, ix, iy - 6, 10)
-			px.pset(ix, iy - 7, 8)
+			px.tri(ix - 3, iy, ix + 3, iy, ix, iy - 6, 7)
+			px.pset(ix, iy - 7, 6)
 		elif item == "adaga":
 			px.pset(ix - 4, iy, 5)
 			px.line(ix - 3, iy, ix + 3, iy, 6)
@@ -137,6 +158,14 @@ class GameRenderer:
 			px.pset(ix - 1, iy - 5, 7)
 			px.pset(ix + 1, iy - 5, 7)
 			px.rect(ix - 3, iy - 14, 3, 5, 6)
+		elif item == "capacete de mineiro":
+			px.rect(ix - 5, iy - 3, 10, 4, 8)
+			px.rect(ix - 3, iy - 7, 6, 4, 9)
+			px.pset(ix, iy - 8, 7)
+		elif item == "remo":
+			px.line(ix - 6, iy, ix + 6, iy, 8)
+			px.line(ix - 2, iy - 3, ix + 2, iy + 3, 8)
+			px.pset(ix, iy, 7)
 
 	def draw_console(self, x, y, w, h):
 		s = self.state
@@ -167,6 +196,17 @@ class GameRenderer:
 			'P': [[1,1,1,0], [1,0,0,1], [1,1,1,0], [1,0,0,0], [1,0,0,0]],
 			'S': [[0,1,1,1], [1,0,0,0], [0,1,1,0], [0,0,0,1], [1,1,1,0]],
 			'E': [[1,1,1,1], [1,0,0,0], [1,1,1,0], [1,0,0,0], [1,1,1,1]],
+			'D': [[1,1,1,0], [1,0,0,1], [1,0,0,1], [1,0,0,1], [1,1,1,0]],
+			'A': [[0,1,1,0], [1,0,0,1], [1,1,1,1], [1,0,0,1], [1,0,0,1]],
+			'T': [[1,1,1,1], [0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]],
+			'J': [[0,0,1,1], [0,0,0,1], [0,0,0,1], [1,0,0,1], [0,1,1,0]],
+			'M': [[1,0,0,0,1], [1,1,0,1,1], [1,0,1,0,1], [1,0,0,0,1], [1,0,0,0,1]],
+			'L': [[1,0,0,0], [1,0,0,0], [1,0,0,0], [1,0,0,0], [1,1,1,1]],
+			'N': [[1,0,0,1], [1,1,0,1], [1,0,1,1], [1,0,0,1], [1,0,0,1]],
+			'I': [[1,1,1], [0,1,0], [0,1,0], [0,1,0], [1,1,1]],
+			'U': [[1,0,0,1], [1,0,0,1], [1,0,0,1], [1,0,0,1], [0,1,1,0]],
+			'F': [[1,1,1,1], [1,0,0,0], [1,1,1,0], [1,0,0,0], [1,0,0,0]],
+			'P': [[1,1,1,0], [1,0,0,1], [1,1,1,0], [1,0,0,0], [1,0,0,0]],
 			' ': [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]],
 		}
 		

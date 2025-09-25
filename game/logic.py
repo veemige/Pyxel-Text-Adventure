@@ -361,6 +361,12 @@ class GameLogic:
 				self._regen_health(3)
 				s.say("Voce bebeu a pocao e restaurou 3 pontos de vida.")
 				inv["utensilios"].remove(item)
+			elif item == "remo":
+				if s.room == "rio":
+					self.enter_room("end")
+					s.say("Voce usou o remo para atravessar o rio.")
+				else:
+					s.say("Voce esta pronto para usar o barco em areas com rio.")
 		else:
 			s.say("Nao pode usar isso.")
 	
@@ -414,6 +420,9 @@ class GameLogic:
 		s = self.s
 		if new_room == "interior da caverna" and "tocha" not in s.effects:
 			s.say("Esta muito escuro para entrar.")
+			return
+		if new_room == "end" and "remo" not in s.char.inventory["utensilios"]:
+			s.say("Voce precisa de um remo para usar o barco e atravessar o rio.")
 			return
 		s.room = new_room
 		if new_room not in s.char.visited_rooms:
@@ -553,7 +562,7 @@ class GameLogic:
 		self._start_combat(eid, data)
 
 	def script_miner(self):
-		self.s.say("Um mineiro cansado surge das sombras: 'Cuidado la dentro.'")
+		self.s.say("Um mineiro cansado surge das sombras: 'Espero que encontre o que procura...'")
 
 	# --------------- Combate ---------------
 	def _start_combat(self, encounter_id: str, enemy_def: dict):
@@ -734,6 +743,57 @@ class GameLogic:
 		s.player_status.clear()
 		self._regen_energy(1)
 
+		# ---------- Cooldowns (helpers) ----------
+	def _cooldowns_step(self):
+		s = self.s
+		cds = getattr(s, "cooldowns", None)
+		if cds is None:
+			s.cooldowns = {}
+			return
+		for key in list(s.cooldowns.keys()):
+			try:
+				left = int(s.cooldowns[key]) - 1
+			except Exception:
+				left = 0
+			if left <= 0:
+				del s.cooldowns[key]
+			else:
+				s.cooldowns[key] = left
+
+	def _cooldown_start(self, key: str, turns: int):
+		s = self.s
+		if not hasattr(s, "cooldowns"):
+			s.cooldowns = {}
+		s.cooldowns[key] = max(1, int(turns))
+
+	def _cooldown_left(self, key: str) -> int:
+		s = self.s
+		return int(getattr(s, "cooldowns", {}).get(key, 0))
+
+	# ---------- Energia (helper) ----------
+	def _regen_energy(self, amount: int = 1):
+		s = self.s
+		st = s.char.status
+		energia = int(st.get("energia", 0))
+		emax = int(st.get("energia_max", energia))
+		st["energia"] = min(emax, energia + max(0, int(amount)))
+	
+	def _spend_energy(self, amount: int) -> bool:
+		s = self.s
+		st = s.char.status
+		energia = int(st.get("energia", 0))
+		if energia < amount:
+			return False
+		st["energia"] = energia - amount
+		return True
+	
+	def _regen_health(self, amount: int):
+			s = self.s
+			if amount <= 0:
+				return
+			s.char.status["vida"] = min(s.char.status["vida_max"], s.char.status["vida"] + amount)
+			s.say(f"Voce regenera {amount} de vida. (Agora: {s.char.status['vida']}/{s.char.status['vida_max']})")
+
 	# --------- Loja (helpers) ---------
 	def _shop_open(self, vendor_id: str, encounter: dict):
 		s = self.s
@@ -850,3 +910,4 @@ class GameLogic:
 			px.KEY_4: "4", px.KEY_5: "5", px.KEY_6: "6", px.KEY_7: "7",
 			px.KEY_8: "8", px.KEY_9: "9",
 		}
+

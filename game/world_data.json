@@ -9,7 +9,7 @@
     },
     "praia": {
         "desc": "Voce esta em uma praia silenciosa. O mar murmura ao sul. A luz da lua reflete nas ondas do mar a sua frente.",
-        "exits": {"norte": "floresta", "leste": "caverna"},
+        "exits": {"norte": "floresta", "leste": "entrada da caverna"},
         "items": ["concha"],
         "scene": "praia",
         "region": "praia",
@@ -23,32 +23,32 @@
         "region": "floresta",
         "encounters_enabled": true
     },
-    "caverna": {
+    "entrada da caverna": {
         "desc": "Uma caverna escura e fria. Ecoa o som de gotas.",
-        "exits": {"oeste": "praia", "entrada": "interior da caverna"},
-        "items": ["tocha"],
-        "scene": "caverna",
+        "exits": {"oeste": "praia", "entrada": "caverna"},
+        "items": [],
+        "scene": "entrada da caverna",
         "region": "caverna",
         "encounters_enabled": true
     },
-    "interior da caverna": {
+    "caverna": {
         "desc": "Voce esta dentro de uma caverna escura. Ha um brilho fraco vindo de uma abertura ao norte.",
-        "exits": {"sul": "caverna", "norte": "planicie"},
-        "items": ["capacete de mineiro"],
-        "scene": "interior da caverna",
+        "exits": {"sul": "entrada da caverna", "norte": "planicie"},
+        "items": ["capacete de mineiro", "remo"],
+        "scene": "caverna",
         "region": "caverna",
         "encounters_enabled": true
     },
     "planicie": {
         "desc": "Voce chegou a uma planicie aberta com grama rala. O ceu estrelado se estende acima de voce.",
-        "exits": {"sul": "interior da caverna", "oeste": "floresta profunda", "norte": "leste da vila"},
+        "exits": {"sul": "caverna", "oeste": "floresta profunda", "norte": "leste da vila"},
         "items": [],
         "scene": "planicie",
         "region": "planicie",
         "encounters_enabled": true
     },
     "floresta profunda": {
-        "desc": "A floresta aqui e densa e escura. O som de animais noturnos pode ser ouvido ao longe.",
+        "desc": "A floresta aqui fica densa e escura. O som de animais noturnos pode ser ouvido ao longe.",
         "exits": {"sul": "floresta", "leste": "planicie", "norte": "vila"},
         "items": ["galho"],
         "scene": "floresta profunda",
@@ -65,10 +65,26 @@
     },
     "vila": {
         "desc": "Voce esta na vila. Apenas o som do vento, acompanhado de alguns fracos sussurros, pode ser ouvido. Apesar das vozes fracas, voce nao ve ninguem",
-        "exits": {"leste": "leste da vila", "norte": "praia"},
-        "items": ["pocao de vida"],
+        "exits": {"leste": "leste da vila", "oeste": "rio", "sul": "floresta profunda"},
+        "items": ["pocao de vida", "tocha"],
         "scene": "vila",
         "region": "vila",
+        "encounters_enabled": false
+    },
+    "rio": {
+        "desc": "Um rio largo bloqueia o caminho a oeste. A correnteza parece forte. Um barco velho esta encostado na margem.",
+        "exits": {"leste": "vila", "sul": "end"},
+        "items": [],
+        "scene": "rio",
+        "region": "rio",
+        "encounters_enabled": true
+    },
+    "end": {
+        "desc": "Continua...",
+        "exits": {},
+        "items": [],
+        "scene": "end",
+        "region": "end",
         "encounters_enabled": false
     }
 }

@@ -48,6 +48,28 @@ ENCOUNTERS = {
             {"item": "dente", "chance": 0.35, "min": 1, "max": 1},
         ],
     },
+    "THALES": {
+        "type": "enemy",
+        "regions": ["interior da caverna"],
+        "min_level": 1,
+        "weight": 0.01,
+        "enemy": {"name": "THALES", "base_hp": 100, "atk": 50},
+        "gold_drop": [100, 200],
+        "drops": [
+            {"item": "camiseta do e-colab", "chance": 1.0, "min": 1, "max": 1}
+        ],
+    },
+    "O PESCADOR": {
+        "type": "enemy",
+        "regions": ["rio"],
+        "min_level": 1,
+        "weight": 5,
+        "enemy": {"name": "O PESCADOR", "base_hp": 12, "atk": 5},
+        "gold_drop": [2, 4],
+        "drops": [
+            {"item": "vara de pesca", "chance": 1.0, "min": 1, "max": 1}
+        ],
+    },
 }
 
 SCRIPTED_BY_ROOM = {
