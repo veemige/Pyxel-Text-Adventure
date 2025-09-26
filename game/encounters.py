@@ -50,7 +50,7 @@ ENCOUNTERS = {
     },
     "THALES": {
         "type": "enemy",
-        "regions": ["interior da caverna"],
+        "regions": ["caverna"],
         "min_level": 1,
         "weight": 0.01,
         "enemy": {"name": "THALES", "base_hp": 100, "atk": 50},

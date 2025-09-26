@@ -54,12 +54,14 @@ class GameRenderer:
 			px.rect(x, base - 20, w, 20, 12)
 			px.rect(x, y + h - 30, w, 30, 15)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "floresta":
 			for i in range(5):
 				tx = x + 20 + i * 50
 				px.rect(tx, base - 25, 6, 25, 4)
 				px.tri(tx - 10, base - 10, tx + 3, base - 75, tx + 16, base - 10, 11)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "entrada da caverna":
 			px.tri(cx - 70, base, cx - 40, base - 70, cx - 25, base, 0)
 			px.tri(cx + 25, base, cx + 40, base - 70, cx + 70, base, 0)
@@ -68,6 +70,7 @@ class GameRenderer:
 			px.rect(x, y + h - 30, w, 30, 3)
 			px.rect(x, base, w, 30, 3)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "caverna":
 			px.rect(x, y, w, h, 0)
 			for i in range(0, w, 20):
@@ -77,6 +80,7 @@ class GameRenderer:
 				px.tri(x + i, floor_y, x + i + 8, floor_y - 12, x + i + 16, floor_y, 1)
 			px.circ(x + w - 20, y + 10, 4, 7)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "planicie":
 			for sx in range(x + 5, x + w - 5, 16):
 				if (sx // 7) % 2 == 0:
@@ -87,6 +91,7 @@ class GameRenderer:
 				px.pset(gx, base - 4, 11)
 				px.pset(gx + 1, base - 6, 11)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "leste da vila":
 			road_y = y + h - 18
 			px.rect(x, road_y, w, 8, 4)
@@ -97,6 +102,7 @@ class GameRenderer:
 				px.pset(hx + k * 50 + 8, road_y - 10, 10)
 				px.pset(hx + k * 50 + 9, road_y - 10, 10)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "vila":
 			px.rect(x, base - 20, w, 20, 4)
 			hx = x + 20
@@ -106,12 +112,14 @@ class GameRenderer:
 				px.pset(hx + k * 50 + 8, base - 30, 10)
 				px.pset(hx + k * 50 + 9, base - 30, 10)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "floresta profunda":
 			for i in range(7):
 				tx = x + 10 + i * 40
 				px.rect(tx, base - 25, 6, 25, 4)
 				px.tri(tx - 10, base - 10, tx + 3, base - 75, tx + 16, base - 10, 11)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "rio":
 			px.rect(x, base - 20, w, 20, 1)
 			for i in range(0, w, 20):
@@ -122,11 +130,13 @@ class GameRenderer:
 			px.line(cx, base - 5, cx, base - 3, 7)
 			px.line(cx - 20, base - 5, cx - 20, base - 3, 7)
 			self._draw_room_items(x, y, w, h, items)
+			self._draw_active_entity(x, y, w, h)
 		elif scene == "end":
 			px.rect(x, y, w, h, 1)
 			px.rect(x, y + h - 30, w, 30, 3)
 			self.draw_pixel_text(cx - 60, base - 50, "Continua...", 10, scale=3)
-			self.draw_pixel_text(cx - 60, base - 20, "Feito por Joao Melo", 7, scale=1)
+			self.draw_pixel_text(cx - 40, base - 20, "Feito por Joao Melo", 7, scale=1)
+			# Normalmente não há entities em 'end', mas deixado como está.
 
 	def _draw_room_items(self, x, y, w, h, items_in_room):
 		s = self.state
@@ -163,8 +173,9 @@ class GameRenderer:
 			px.rect(ix - 3, iy - 7, 6, 4, 9)
 			px.pset(ix, iy - 8, 7)
 		elif item == "remo":
-			px.line(ix - 6, iy, ix + 6, iy, 8)
-			px.line(ix - 2, iy - 3, ix + 2, iy + 3, 8)
+			px.line(ix - 6, iy, ix + 6, iy, 4)
+			px.line(ix - 2, iy - 3, ix + 2, iy + 3, 4)
+			px.rect(ix - 11, iy - 1, 5, 3, 4)
 			px.pset(ix, iy, 7)
 
 	def draw_console(self, x, y, w, h):
@@ -225,3 +236,174 @@ class GameRenderer:
 							)
 			
 			char_x += 5 * scale  # Espaçamento entre caracteres
+
+	def _draw_active_entity(self, x, y, w, h):
+		s = self.state
+		entity = getattr(s, "active_entity", None)
+		room_tag = getattr(s, "active_entity_room", None)
+		if not entity or room_tag != s.room:
+			return
+
+		base = y + h - 30
+		cx = x + w // 2
+		etype = entity.get("type")
+		eid = entity.get("id", "").lower()
+		name = entity.get("name", "").upper()
+
+		# animação simples
+		bob = self._sprite_bob()
+
+		# sombra no chão
+		self._draw_shadow(cx, base, 14 if etype == "enemy" else 10)
+
+		# sprite
+		if etype == "npc":
+			self._draw_npc(cx, base + bob)
+		elif etype == "enemy":
+			if "caranguejo" in eid:
+				self._draw_enemy_crab(cx, base + bob)
+			elif "lobo" in eid:
+				self._draw_enemy_wolf(cx, base + bob)
+			elif "morcego" in eid:
+				self._draw_enemy_bat(cx, base + bob)
+			elif "pescador" in eid:
+				self._draw_enemy_fisher(cx, base + bob)
+			elif "thales" in eid:
+				self._draw_enemy_thales(cx, base + bob)
+			else:
+				self._draw_enemy_generic(cx, base + bob)
+
+		# nome com leve sombra
+		px.text(cx - len(name) * 2 + 1, base - 27, name[:18], 0)
+		px.text(cx - len(name) * 2,     base - 28, name[:18], 7)
+
+	# ---------- helpers visuais ----------
+	def _sprite_bob(self):
+		# ciclo: 0,1,0,-1
+		step = (px.frame_count // 8) % 4
+		return (1 if step == 1 else (-1 if step == 3 else 0))
+
+	def _draw_shadow(self, cx, base, half_w=10):
+		# sombra achatada (retângulo fino)
+		px.rect(cx - half_w, base - 2, half_w * 2, 2, 1)
+
+	# ---------- sprites caprichados ----------
+	def _draw_npc(self, cx, base, bob=0):
+		# pernas
+		px.rect(cx - 5, base - 10, 3, 10, 5)
+		px.rect(cx + 2, base - 10, 3, 10, 5)
+		# botas
+		px.rect(cx - 6, base - 2, 5, 2, 0)
+		px.rect(cx + 1, base - 2, 5, 2, 0)
+		# torso
+		px.rect(cx - 7, base - 22, 14, 12, 12)     # casaco
+		px.rectb(cx - 7, base - 22, 14, 12, 0)     # contorno
+		px.rect(cx - 7, base - 16, 14, 2, 3)       # cinto
+		# braços
+		px.rect(cx - 10, base - 20, 3, 7, 12)
+		px.rect(cx + 7, base - 20, 3, 7, 12)
+		# cabeça
+		px.circ(cx, base - 26, 4, 7)
+		# chapéu
+		px.rect(cx - 8, base - 30, 16, 2, 9)
+		px.rect(cx - 5, base - 33, 10, 3, 9)
+		# detalhes rosto
+		px.pset(cx - 2, base - 27, 0); px.pset(cx + 2, base - 27, 0)
+		px.pset(cx, base - 25, 8)
+
+	def _draw_enemy_generic(self, cx, base, bob=0):
+		# corpo e cabeça
+		px.rect(cx - 8, base - 14, 16, 10, 8)
+		px.circ(cx + 6, base - 18, 4, 6)
+		# olhos
+		px.pset(cx + 5, base - 19, 7); px.pset(cx + 7, base - 19, 7)
+		# garras/patas
+		px.rect(cx - 10, base - 6, 4, 3, 5)
+		px.rect(cx + 6,  base - 6, 4, 3, 5)
+		# contorno
+		px.rectb(cx - 8, base - 14, 16, 10, 0)
+
+	def _draw_enemy_crab(self, cx, base, bob=0):
+		# casco
+		px.rect(cx - 12, base - 9, 24, 7, 8)
+		px.rectb(cx - 12, base - 9, 24, 7, 0)
+		# olhos
+		px.rect(cx - 4, base - 12, 3, 3, 7); px.pset(cx - 3, base - 13, 0)
+		px.rect(cx + 2, base - 12, 3, 3, 7); px.pset(cx + 3, base - 13, 0)
+		# garras
+		px.tri(cx - 16, base - 7, cx - 8, base - 13, cx - 2, base - 7, 8)
+		px.tri(cx + 16, base - 7, cx + 8, base - 13, cx + 2, base - 7, 8)
+		# patas
+		for dx in (-10, -6, -2, 2, 6, 10):
+			px.pset(cx + dx, base - 2, 7)
+			px.pset(cx + dx + (1 if dx < 0 else -1), base - 1, 7)
+
+	def _draw_enemy_wolf(self, cx, base, bob=0):
+		# corpo
+		px.rect(cx - 14, base - 12, 24, 9, 5)
+		px.rectb(cx - 14, base - 12, 24, 9, 0)
+		# cabeça + focinho
+		px.rect(cx + 8, base - 14, 10, 8, 5)
+		px.tri(cx + 18, base - 10, cx + 26, base - 9, cx + 18, base - 7, 5)
+		# orelhas
+		px.tri(cx + 9, base - 14, cx + 12, base - 20, cx + 15, base - 14, 5)
+		px.tri(cx + 15, base - 14, cx + 18, base - 20, cx + 21, base - 14, 5)
+		# cauda
+		px.tri(cx - 16, base - 10, cx - 24, base - 8, cx - 16, base - 6, 5)
+		# pernas
+		px.rect(cx - 10, base - 3, 3, 3, 5)
+		px.rect(cx - 2,  base - 3, 3, 3, 5)
+		px.rect(cx + 6,  base - 3, 3, 3, 5)
+		# olhos
+		px.pset(cx + 15, base - 12, 7); px.pset(cx + 12, base - 12, 7)
+		# focinho claro
+		px.rect(cx + 18, base - 9, 4, 3, 6)
+
+	def _draw_enemy_bat(self, cx, base, bob=0):
+		# amplitude de asa animada
+		flap = 3 if ((px.frame_count // 6) % 2 == 0) else 0
+		# corpo
+		px.circ(cx, base - 14, 4, 13)
+		# asas
+		px.tri(cx, base - 14, cx - 18, base - (8 + flap), cx - 6, base - 6, 0)
+		px.tri(cx, base - 14, cx + 18, base - (8 + flap), cx + 6, base - 6, 0)
+		# olhos
+		px.pset(cx - 1, base - 15, 7); px.pset(cx + 1, base - 15, 7)
+		# orelhas
+		px.tri(cx - 2, base - 18, cx - 1, base - 22, cx, base - 18, 13)
+		px.tri(cx + 2, base - 18, cx + 1, base - 22, cx, base - 18, 13)
+
+	def _draw_enemy_fisher(self, cx, base, bob=0):
+		# pernas
+		px.rect(cx - 4, base - 10, 3, 10, 3)
+		px.rect(cx + 1, base - 10, 3, 10, 3)
+		# torso e braços
+		px.rect(cx - 6, base - 22, 12, 12, 11)
+		px.rectb(cx - 6, base - 22, 12, 12, 0)
+		px.rect(cx - 9, base - 20, 3, 8, 11)
+		px.rect(cx + 6, base - 20, 3, 8, 11)
+		# cabeça + chapéu
+		px.circ(cx, base - 26, 4, 7)
+		px.rect(cx - 7, base - 30, 14, 2, 9)
+		px.tri(cx - 3, base - 30, cx + 3, base - 30, cx, base - 34, 9)
+		# vara e linha
+		px.line(cx + 6, base - 18, cx + 20, base - 32, 7)
+		px.line(cx + 20, base - 32, cx + 20, base - 16, 7)
+
+	def _draw_enemy_thales(self, cx, base, bob=0):
+		# capa
+		px.tri(cx - 18, base - 10, cx, base - 30, cx + 18, base - 10, 2)
+		# tronco
+		px.rect(cx - 10, base - 24, 20, 16, 2)
+		px.rectb(cx - 10, base - 24, 20, 16, 0)
+		# cabeça
+		px.circ(cx, base - 28, 5, 7)
+		# “coroa”
+		px.rect(cx - 8, base - 33, 16, 2, 8)
+		px.tri(cx - 6, base - 33, cx - 4, base - 38, cx - 2, base - 33, 8)
+		px.tri(cx + 2, base - 33, cx + 4, base - 38, cx + 6, base - 33, 8)
+		# olhos brilhando
+		px.pset(cx - 2, base - 29, 10); px.pset(cx + 2, base - 29, 10)
+		# braços
+		px.rect(cx - 13, base - 22, 3, 10, 2)
+		px.rect(cx + 10, base - 22, 3, 10, 2)

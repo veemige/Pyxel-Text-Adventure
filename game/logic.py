@@ -11,16 +11,36 @@ class GameLogic:
 		# Loja: razão de venda (50% do preço)
 		self.shop_sell_ratio = 0.5
 
+		# Campos dinâmicos para desenhar NPCs/Inimigos ativos
+		# entidade visual ativa (NPC/Inimigo) para render
+		self.s.active_entity = None
+		self.s.active_entity_room = None
+
+		# Estado de morte/game over
+		self.s.game_over = False
+		self.s.death_announced = False
+
 	# --------------- Loop ---------------
 	def update(self):
-		self.handle_text_input()
-		if self.s.char.status["vida"] <= 0:
-			self.s.say("Voce morreu!")
-			self.s.say("Aperte [ENTER] para carregar o ultimo save.")
+		s = self.s
+		# Se morreu, não repita mensagem e só aceite ENTER para carregar
+		if s.char.status.get("vida", 1) <= 0:
+			if not s.game_over:
+				self._on_player_death()
+			# ENTER físico para carregar último save
 			if px.btnp(px.KEY_RETURN):
-				self.load_game()
+				if self.load_game():
+					s.say("Jogo carregado.")
+					s.game_over = False
+					s.death_announced = False
+				else:
+					s.say("Nenhum save encontrado. Reinicie ou comece um novo jogo.")
+			return
+		# ...existing code...
+		self.handle_text_input()
 
 	def handle_text_input(self):
+		s = self.s
 		# Letras a-z
 		for k, ch in self._alpha_keymap().items():
 			if px.btnp(k):
@@ -155,6 +175,8 @@ class GameLogic:
 					s.say("Voce fugiu do combate.")
 					s.in_combat = False
 					s.enemy = None
+					s.active_entity = None
+					s.active_entity_room = None
 				else:
 					s.say("Nao conseguiu fugir!")
 					if s.enemy and s.char.status["vida"] > 0:
@@ -417,6 +439,10 @@ class GameLogic:
 		s.say(desc)
 
 	def enter_room(self, new_room: str):
+		# Ao trocar de sala, se estava morto (por algum motivo), limpa entidade visual
+		if self.s.game_over:
+			self.s.active_entity = None
+			self.s.active_entity_room = None
 		s = self.s
 		if new_room == "interior da caverna" and "tocha" not in s.effects:
 			s.say("Esta muito escuro para entrar.")
@@ -551,14 +577,21 @@ class GameLogic:
 			s.say(f"Encontro: {encounter_id}")
 
 	def _enc_npc(self, eid, e):
-		self.s.say("Um mercador aparece na estrada, oferecendo seus produtos.")
-		self.s.say("Ele vende: pocao de vida | adaga | armadura leve")
 		s = self.s
 		s.say("Um mercador aparece na estrada, oferecendo seus produtos.")
+		# Marca entity ativo para render
+		s.active_entity = {"type": "npc", "id": eid, "name": e.get("name", "Mercador")}
+		s.active_entity_room = s.room
 		self._shop_open(vendor_id=eid, encounter=e)
 
 	def _enc_enemy(self, eid, e):
 		data = e.get("enemy", {})
+		name = data.get("name", "Inimigo")
+		lvl = self.s.char.status["nivel"]
+		self.s.say(f"Um {name} salta a sua frente! (area: {self.s.rooms[self.s.room].get('region')}, nivel {lvl})")
+		# Marca entity ativo para desenhar
+		self.s.active_entity = {"type": "enemy", "id": eid, "name": name}
+		self.s.active_entity_room = self.s.room
 		self._start_combat(eid, data)
 
 	def script_miner(self):
@@ -567,8 +600,10 @@ class GameLogic:
 	# --------------- Combate ---------------
 	def _start_combat(self, encounter_id: str, enemy_def: dict):
 		s = self.s
-		if s.in_combat:
-			return
+		# Garante entity ativo visível
+		if not s.active_entity:
+			s.active_entity = {"type": "enemy", "id": encounter_id, "name": enemy_def.get("name", "Inimigo")}
+			s.active_entity_room = s.room
 		lvl = s.char.status["nivel"]
 		name = enemy_def.get("name", "Inimigo")
 		base_hp = int(enemy_def.get("base_hp", 5))
@@ -704,6 +739,7 @@ class GameLogic:
 		s.say(f"{s.enemy['name']} ataca e causa {dmg} de dano. (Sua vida: {s.char.status['vida']}/{s.char.status['vida_max']})")
 		if s.char.status["vida"] <= 0:
 			s.say("Voce caiu em combate.")
+			self._on_player_death()
 		self._regen_energy(1)
 		self._cooldowns_step()
 
@@ -738,10 +774,14 @@ class GameLogic:
 					continue
 		else:
 			s.say("Combate encerrado.")
+		# Limpa estado de combate
 		s.in_combat = False
 		s.enemy = None
 		s.player_status.clear()
 		self._regen_energy(1)
+		# Remove a entidade visual (inimigo morto/fim do encontro)
+		s.active_entity = None
+		s.active_entity_room = None
 
 		# ---------- Cooldowns (helpers) ----------
 	def _cooldowns_step(self):
@@ -810,6 +850,9 @@ class GameLogic:
 		s.shop_vendor = None
 		s.shop_prices = {}
 		s.say("Voce se despede do mercador.")
+		# Ao fechar a loja, remove entity visual
+		s.active_entity = None
+		s.active_entity_room = None
 
 	def _shop_list(self):
 		s = self.s
@@ -910,4 +953,18 @@ class GameLogic:
 			px.KEY_4: "4", px.KEY_5: "5", px.KEY_6: "6", px.KEY_7: "7",
 			px.KEY_8: "8", px.KEY_9: "9",
 		}
+
+	# ---------- Morte: handler único ----------
+	def _on_player_death(self):
+		s = self.s
+		if s.death_announced:
+			return
+		s.death_announced = True
+		s.game_over = True
+		# encerra combate/entidade ativa
+		s.in_combat = False
+		s.enemy = None
+		s.active_entity = None
+		s.active_entity_room = None
+		s.say("Você morreu! Pressione ENTER para carregar o último save (ou digite 'carregar').")
 
