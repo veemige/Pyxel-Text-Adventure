@@ -349,7 +349,8 @@ class GameLogic:
 			r["items"].remove(item)
 			info = s.item_map.get(item, {"tipo": "comum"})
 			tipo = info.get("tipo")
-			if tipo == "utensilio":
+			# Trate 'consumivel' como 'utensilio' para facilitar uso via comando 'usar'
+			if tipo in ("utensilio", "consumivel"):
 				inv["utensilios"].append(item)
 			elif tipo == "arma":
 				inv["armas"].append(item)
@@ -367,9 +368,24 @@ class GameLogic:
 			s.say("Usar o que?")
 			return
 		inv = s.char.inventory
-		if item in inv["utensilios"]:
+		info = s.item_map.get(item, {})
+		tipo = info.get("tipo")
+
+		# Caso especial: poção de vida pode estar em qualquer lista (compatibilidade com saves antigos)
+		if item == "pocao de vida":
+			# Verifica se o jogador possui a poção em qualquer categoria
+			possui = any(item in inv[key] for key in ("utensilios", "comuns", "armas", "armaduras"))
+			if not possui:
+				s.say("Voce nao tem isso para usar.")
+				return
+			self._regen_health(3)
+			s.say("Voce bebeu a pocao e restaurou 3 pontos de vida.")
+			self._remove_item(item, 1)
+			return
+
+		# Itens utilitários/consumíveis (ex.: tocha) precisam estar em utensilios
+		if item in inv["utensilios"] or (tipo == "consumivel" and item in inv.get("comuns", [])):
 			s.say(f"Voce usou o {item}.")
-			info = s.item_map.get(item, {})
 			effect = info.get("efeito")
 			if effect:
 				s.say(f"Voce usou o item {item}: {effect}")
@@ -379,18 +395,20 @@ class GameLogic:
 				else:
 					s.effects.add("tocha")
 					s.say("A tocha agora esta acesa.")
-			elif item == "pocao de vida":
-				self._regen_health(3)
-				s.say("Voce bebeu a pocao e restaurou 3 pontos de vida.")
-				inv["utensilios"].remove(item)
-			elif item == "remo":
+				return
+			if item == "remo":
 				if s.room == "rio":
 					self.enter_room("end")
 					s.say("Voce usou o remo para atravessar o rio.")
 				else:
 					s.say("Voce esta pronto para usar o barco em areas com rio.")
-		else:
-			s.say("Nao pode usar isso.")
+				return
+			# Se for consumível genérico que não tratamos acima, consome o item
+			if tipo == "consumivel":
+				self._remove_item(item, 1)
+				return
+
+		s.say("Nao pode usar isso.")
 	
 	def equip(self, item: str):
 		s = self.s
@@ -782,7 +800,6 @@ class GameLogic:
 		# Remove a entidade visual (inimigo morto/fim do encontro)
 		s.active_entity = None
 		s.active_entity_room = None
-
 		# ---------- Cooldowns (helpers) ----------
 	def _cooldowns_step(self):
 		s = self.s

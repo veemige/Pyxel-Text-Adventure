@@ -10,7 +10,7 @@ class Character:
         }
         self.status = {
             "vida": 10, "vida_max": 10,
-            "energia": 3, "energia_max": 3,
+            "energia": 4, "energia_max": 4,
             "forca": 1, "defesa": 1,
             "nivel": 1, "experiencia": 0, "pontos": 0,
             "moedas": 0,
