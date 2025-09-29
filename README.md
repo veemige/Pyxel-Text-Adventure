@@ -1,5 +1,4 @@
-# CORPO SECO — Pyxel Text Adventure
-# versão BETA
+# CORPO SECO — Pyxel Text Adventure - versão BETA
 
 Aventura de texto com visual retro (Pyxel). Metade de cima desenha a cena; metade de baixo é um console com histórico e prompt.
 
