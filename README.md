@@ -1,4 +1,5 @@
 # CORPO SECO — Pyxel Text Adventure
+# versão BETA
 
 Aventura de texto com visual retro (Pyxel). Metade de cima desenha a cena; metade de baixo é um console com histórico e prompt.
 
@@ -33,6 +34,12 @@ Atalhos do Pyxel: `ESC` para sair, `ALT+ENTER` para alternar tela cheia (se supo
 - `salvar` — salva a sessão em `savegame.json`.
 - `sair | exit | quit` — salva e fecha o jogo.
 
+Comandos da loja (quando um mercador abrir a loja):
+- `lista` — mostra o catálogo do vendedor com preços.
+- `comprar <item> [qtd]` — compra 1 ou mais unidades (se tiver moedas suficientes).
+- `vender <item> [qtd]` — vende itens do seu inventário (recebe ~50% do preço base).
+- `sair` — fecha a loja.
+
 Menu inicial:
 - `entrar` — entra no jogo na sala `praia` (ou defina um nome digitando e depois use `entrar`).
 - `nome <novo>` — altera seu nome ainda no menu.
@@ -58,13 +65,20 @@ Pontos de habilidade (distribuição via comando):
 	- `defesa`: cada ponto dá `+1` de Defesa.
 
 Atributos relevantes do personagem:
-- `vida/vida_max`, `forca`, `defesa`, `nivel`, `experiencia`, `pontos` (distribuíveis), `energia/energia_max`, `agilidade`.
+- `vida/vida_max`, `forca`, `defesa`, `nivel`, `experiencia`, `pontos` (distribuíveis), `energia/energia_max`, `agilidade`, `moedas`.
+
+### Moedas, loja e saques (loot)
+- Moedas: mostradas no `status`. Você ganha moedas ao vencer inimigos (cada encontro define um intervalo `gold_drop`).
+- Loja (mercador): alguns encontros de NPC abrem uma loja com catálogo e preços. Você pode comprar e vender.
+	- Compra: paga o preço listado do vendedor para cada unidade.
+	- Venda: recebe 50% do preço base (definido no vendedor ou no item, se possuir `preco`). O mercador não compra itens sem preço conhecido.
+	- Exemplo de catálogo do mercador costeiro: `pocao de vida (5)`, `adaga (12)`, `armadura leve (25)`.
 
 ### Itens, inventário, uso e equipamento
 Categorias de inventário: `utensilios`, `armas`, `armaduras`, `comuns`.
 - `pegar <item>` move o item da sala para a categoria adequada.
 - `usar <item>` aplica efeitos de utensílios/consumíveis.
-	- `tocha`: ativa efeito de iluminação (`effects`), necessário para entrar em “interior da caverna”.
+	- `tocha`: ativa efeito de iluminação.
 	- `pocao de vida`: recupera `3` de vida e é consumida.
 - `equipar <item>` aplica bônus:
 	- Armas: aumentam `forca` em `dano` do item enquanto equipadas.
@@ -86,13 +100,10 @@ Fluxo ao entrar em uma sala:
 4) Possível encontro aleatório se a sala permitir e a rolagem de chance passar.
 
 Encontros disponíveis (arquivo `game/encounters.py`):
-- `mercador_costeiro` (npc) — regiões: praia/planície/vila — `weight: 1` (para menus de compra no futuro).
-- `caranguejo` (enemy) — região: praia — `min_level: 1`, `max_level: 3`, `weight: 3`.
-- `lobo` (enemy) — regiões: floresta/planície — `min_level: 2`, `weight: 2`.
-- `morcego` (enemy) — região: caverna — `min_level: 1`, `weight: 2`.
-
-Evento programado exemplo:
-- Sala `interior da caverna` → `minero_intro` (`once: true`) chama `script_miner` (mensagem narrativa).
+- `mercador_costeiro` (npc) — regiões: praia/planície/vila — `weight: 1` — abre a loja (compra/venda).
+- `caranguejo` (enemy) — região: praia — `min_level: 1`, `max_level: 3`, `weight: 3` — dropa moedas e pode soltar `concha`.
+- `lobo` (enemy) — regiões: floresta/planície — `min_level: 2`, `weight: 2` — dropa moedas e pode soltar `couro`.
+- `morcego` (enemy) — região: caverna — `min_level: 1`, `weight: 2` — dropa moedas e pode soltar `dente`.
 
 ### Combate tático simples
 Inicia em encontros de tipo `enemy`.
@@ -124,40 +135,47 @@ As salas ficam em `game/world_data.json`.
 Campos de sala:
 - `desc`, `exits`, `items`, `scene`, `region`, `encounters_enabled`.
 
-Salas existentes:
+Salas existentes (arquivo `game/world_data.json`):
 - `menu` — região: menu — encontros: OFF
-- `praia` — saídas: `norte: floresta`, `leste: caverna` — região: praia — encontros: OFF — itens: `concha`
+- `praia` — saídas: `norte: floresta`, `leste: entrada da caverna` — região: praia — encontros: OFF — itens: `concha`
 - `floresta` — saídas: `sul: praia`, `norte: floresta profunda` — região: floresta — encontros: ON — itens: `galho`
-- `caverna` — saídas: `oeste: praia`, `entrada: interior da caverna` — região: caverna — encontros: ON — itens: `tocha`
-- `interior da caverna` — saídas: `sul: caverna`, `norte: planicie` — região: caverna — encontros: ON — itens: `capacete de mineiro`
-	- Requer efeito `tocha` ativo para entrar (use a tocha antes).
-- `planicie` — saídas: `sul: interior da caverna`, `oeste: floresta profunda`, `norte: leste da vila` — região: planicie — encontros: ON — itens: (nenhum)
+- `entrada da caverna` — saídas: `oeste: praia`, `entrada: caverna` — região: caverna — encontros: ON — itens: (nenhum)
+- `caverna` — saídas: `sul: entrada da caverna`, `norte: planicie` — região: caverna — encontros: ON — itens: `capacete de mineiro`, `remo`
+- `planicie` — saídas: `sul: caverna`, `oeste: floresta profunda`, `norte: leste da vila` — região: planicie — encontros: ON — itens: (nenhum)
 - `floresta profunda` — saídas: `sul: floresta`, `leste: planicie`, `norte: vila` — região: floresta — encontros: ON — itens: `galho`
 - `leste da vila` — saídas: `sul: planicie`, `oeste: vila` — região: vila — encontros: ON — itens: `adaga`
-- `vila` — saídas: `leste: leste da vila`, `norte: praia` — região: vila — encontros: OFF — itens: `pocao de vida`
+- `vila` — saídas: `leste: leste da vila`, `oeste: rio`, `sul: floresta profunda` — região: vila — encontros: OFF — itens: `pocao de vida`, `tocha`
+- `rio` — saídas: `leste: vila`, `sul: ?` — região: rio — encontros: ON — itens: (nenhum)
 
 ## Itens (definições e locais iniciais)
 Arquivo: `game/item_data.json`.
 
-Definições:
+Definições (arquivo `game/item_data.json`):
 - `concha` — tipo: comum — "Uma concha do mar."
 - `galho` — tipo: arma — dano `0.5` — "Um galho seco."
-- `tocha` — tipo: utensílio — efeito: ilumina o ambiente (ativa efeito `tocha`).
+- `tocha` — tipo: utensílio — efeito: ilumina o ambiente.
 - `adaga` — tipo: arma — dano `1.0` — "Uma adaga afiada."
 - `pocao de vida` — tipo: consumível — restaura 3 de vida.
 - `capacete de mineiro` — tipo: armadura — `defesa: 1.0` — `slot: head`.
+- `remo` — tipo: utensílio — permite navegar/atravessar áreas com barco (rio → end).
+- `camiseta do e-colab` — tipo: armadura — `defesa: 20` — `slot: torso` (drop raro).
+- `couro` — tipo: comum — material.
+- `dente` — tipo: comum — troféu simples.
+- `vara de pesca` — tipo: arma — `dano: 1.2`.
 
 Posições iniciais (coordenadas de desenho na cena):
 - `praia`: `concha` em `(160, 108)`
 - `floresta`: `galho` em `(40, 112)`
+- `floresta profunda`: `galho` em `(40, 112)`
 - `leste da vila`: `adaga` em `(200, 104)`
 - `vila`: `pocao de vida` em `(200, 104)`, `tocha` em `(190, 102)`
-- `interior da caverna`: `capacete de mineiro` em `(120, 90)`
+- `caverna`: `capacete de mineiro` em `(120, 90)`, `remo` em `(190, 90)`
 
 ## Interface e renderização
 - Metade superior desenha a cena com formas simples (sol, mar, árvores, casas, cavernas, etc.).
 - Os itens são desenhados com sprites minimalistas gerados por código nas posições do JSON.
 - Metade inferior exibe o console com histórico, quebra de linha por palavras e cursor piscando.
+ - Durante encontros: NPCs e inimigos aparecem como sprites simples na cena; somem ao fechar a loja ou ao fim do combate/morte.
 
 ## Customização rápida
 - Salas/mundo: edite `game/world_data.json` (adicione chaves `region` e `encounters_enabled` nas salas novas).
@@ -186,7 +204,7 @@ Pyxel-Text-Adventure/
 ```
 
 ## Problemas conhecidos e dicas
-- Entrar em `interior da caverna` exige o efeito `tocha` ativo: use `usar tocha` antes.
+- Para atravessar o `rio` até `end`, tenha o `remo` no inventário.
 - Fugir pode falhar (50%). Guarde energia para habilidades.
 - Para depurar encontros, use `encontros` e `forcar encontro <id>`.
 
