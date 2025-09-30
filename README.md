@@ -6,6 +6,7 @@ Aventura de texto com visual retro (Pyxel). Metade de cima desenha a cena; metad
 
 Observação: os textos em jogo (console) usam ASCII simples (sem acentos). Este README usa acentos normalmente.
 
+
 ## Como executar
 Requisitos: Python 3.x e Pyxel.
 
@@ -64,7 +65,8 @@ Pontos de habilidade (distribuição via comando):
 	- `defesa`: cada ponto dá `+1` de Defesa.
 
 Atributos relevantes do personagem:
-- `vida/vida_max`, `forca`, `defesa`, `nivel`, `experiencia`, `pontos` (distribuíveis), `energia/energia_max`, `agilidade`, `moedas`.
+
+- `vida/vida_max`, `forca`, `defesa`, `nivel`, `experiencia`, `pontos` (distribuíveis), `energia/energia_max`, `moedas`.
 
 ### Moedas, loja e saques (loot)
 - Moedas: mostradas no `status`. Você ganha moedas ao vencer inimigos (cada encontro define um intervalo `gold_drop`).
@@ -104,7 +106,12 @@ Encontros disponíveis (arquivo `game/encounters.py`):
 - `lobo` (enemy) — regiões: floresta/planície — `min_level: 2`, `weight: 2` — dropa moedas e pode soltar `couro`.
 - `morcego` (enemy) — região: caverna — `min_level: 1`, `weight: 2` — dropa moedas e pode soltar `dente`.
 
+- `THALES` (enemy — raro) — região: caverna — `weight: 0.01` — dropa muitas moedas e a `camiseta do e-colab`.
+- `O PESCADOR` (enemy) — região: rio — `weight: 5` — dropa moedas e `vara de pesca`.
+
+
 ### Combate tático simples
+
 Inicia em encontros de tipo `enemy`.
 
 Ações do jogador:
@@ -124,17 +131,21 @@ Detalhes:
 - Fim do combate: vitória concede XP; derrota encerra com mensagem e você pode morrer.
 
 ### Morte, salvar e carregar
+
 - Se `vida <= 0`, a tela indica sua morte; pressione `Enter` para carregar o último save.
 - `salvar` grava `savegame.json` com: personagem, sala atual, salas, flags de encontros, efeitos ativos e estado do menu.
 - `sair` salva e encerra o jogo.
 
 ## Mundo (salas, regiões, encontros)
+
 As salas ficam em `game/world_data.json`.
 
 Campos de sala:
+
 - `desc`, `exits`, `items`, `scene`, `region`, `encounters_enabled`.
 
 Salas existentes (arquivo `game/world_data.json`):
+
 - `menu` — região: menu — encontros: OFF
 - `praia` — saídas: `norte: floresta`, `leste: entrada da caverna` — região: praia — encontros: OFF — itens: `concha`
 - `floresta` — saídas: `sul: praia`, `norte: floresta profunda` — região: floresta — encontros: ON — itens: `galho`
@@ -144,12 +155,14 @@ Salas existentes (arquivo `game/world_data.json`):
 - `floresta profunda` — saídas: `sul: floresta`, `leste: planicie`, `norte: vila` — região: floresta — encontros: ON — itens: `galho`
 - `leste da vila` — saídas: `sul: planicie`, `oeste: vila` — região: vila — encontros: ON — itens: `adaga`
 - `vila` — saídas: `leste: leste da vila`, `oeste: rio`, `sul: floresta profunda` — região: vila — encontros: OFF — itens: `pocao de vida`, `tocha`
-- `rio` — saídas: `leste: vila`, `sul: ?` — região: rio — encontros: ON — itens: (nenhum)
+- `rio` — saídas: `leste: vila`, `sul: end` — região: rio — encontros: ON — itens: (nenhum)
 
 ## Itens (definições e locais iniciais)
+
 Arquivo: `game/item_data.json`.
 
 Definições (arquivo `game/item_data.json`):
+
 - `concha` — tipo: comum — "Uma concha do mar."
 - `galho` — tipo: arma — dano `0.5` — "Um galho seco."
 - `tocha` — tipo: utensílio — efeito: ilumina o ambiente.
@@ -163,6 +176,7 @@ Definições (arquivo `game/item_data.json`):
 - `vara de pesca` — tipo: arma — `dano: 1.2`.
 
 Posições iniciais (coordenadas de desenho na cena):
+
 - `praia`: `concha` em `(160, 108)`
 - `floresta`: `galho` em `(40, 112)`
 - `floresta profunda`: `galho` em `(40, 112)`
@@ -171,12 +185,14 @@ Posições iniciais (coordenadas de desenho na cena):
 - `caverna`: `capacete de mineiro` em `(120, 90)`, `remo` em `(190, 90)`
 
 ## Interface e renderização
+
 - Metade superior desenha a cena com formas simples (sol, mar, árvores, casas, cavernas, etc.).
 - Os itens são desenhados com sprites minimalistas gerados por código nas posições do JSON.
 - Metade inferior exibe o console com histórico, quebra de linha por palavras e cursor piscando.
- - Durante encontros: NPCs e inimigos aparecem como sprites simples na cena; somem ao fechar a loja ou ao fim do combate/morte.
+- Durante encontros: NPCs e inimigos aparecem como sprites simples na cena; somem ao fechar a loja ou ao fim do combate/morte.
 
 ## Customização rápida
+
 - Salas/mundo: edite `game/world_data.json` (adicione chaves `region` e `encounters_enabled` nas salas novas).
 - Itens: edite `game/item_data.json` (`definitions` e `positions`).
 - Encontros: edite `game/encounters.py` (tabela `ENCOUNTERS`) e ajuste regiões/nível/`weight`.

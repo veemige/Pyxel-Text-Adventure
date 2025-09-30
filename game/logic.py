@@ -394,7 +394,7 @@ class GameLogic:
 					s.say("A tocha ja esta acesa.")
 				else:
 					s.effects.add("tocha")
-					s.say("A tocha agora esta acesa.")
+					s.say("A tocha agora brilha mais intensamente, iluminando o ambiente em um brilho estranho.")
 				return
 			if item == "remo":
 				if s.room == "rio":
@@ -466,7 +466,7 @@ class GameLogic:
 			s.say("Esta muito escuro para entrar.")
 			return
 		if new_room == "end" and "remo" not in s.char.inventory["utensilios"]:
-			s.say("Voce precisa de um remo para usar o barco e atravessar o rio.")
+			s.say("Voce precisa de um remo para usar o barco.")
 			return
 		s.room = new_room
 		if new_room not in s.char.visited_rooms:
@@ -606,7 +606,7 @@ class GameLogic:
 		data = e.get("enemy", {})
 		name = data.get("name", "Inimigo")
 		lvl = self.s.char.status["nivel"]
-		self.s.say(f"Um {name} salta a sua frente! (area: {self.s.rooms[self.s.room].get('region')}, nivel {lvl})")
+		self.s.say(f"Um {name} aparece. (area: {self.s.rooms[self.s.room].get('region')}, nivel {lvl})")
 		# Marca entity ativo para desenhar
 		self.s.active_entity = {"type": "enemy", "id": eid, "name": name}
 		self.s.active_entity_room = self.s.room
@@ -641,7 +641,7 @@ class GameLogic:
 		s.in_combat = True
 		s.say(f"Um {name} aparece! Combate iniciado.")
 		s.say("Seu turno: atacar | leve | pesado | defender | sangrar | atordoar | usar <item> | fugir.")
-		self._regen_energy(1)
+		self._regen_energy(2)
 
 	def _combat_attack(self, mode: str = "normal"):
 		s = self.s
@@ -680,7 +680,7 @@ class GameLogic:
 		s = self.s
 		s.player_status["guard"] = 1
 		s.say("Voce assume postura defensiva.")
-		self._regen_energy(2)
+		self._regen_energy(3)
 		if s.enemy and s.enemy["hp"] > 0 and s.char.status["vida"] > 0:
 			self._combat_enemy_turn()
 
@@ -741,7 +741,7 @@ class GameLogic:
 			s.enemy["status"]["atordoado"] -= 1
 			if s.enemy["status"]["atordoado"] <= 0:
 				del s.enemy["status"]["atordoado"]
-			self._regen_energy(1)
+			self._regen_energy(2)
 			self._cooldowns_step()
 			return
 		e_atk = s.enemy.get("atk", 1)
@@ -762,7 +762,7 @@ class GameLogic:
 		if s.char.status["vida"] <= 0:
 			s.say("Voce caiu em combate.")
 			self._on_player_death()
-		self._regen_energy(1)
+		self._regen_energy(2)
 		self._cooldowns_step()
 
 	def _end_combat(self, victory: bool):
@@ -800,7 +800,7 @@ class GameLogic:
 		s.in_combat = False
 		s.enemy = None
 		s.player_status.clear()
-		self._regen_energy(1)
+		self._regen_energy(2)
 		# Remove a entidade visual (inimigo morto/fim do encontro)
 		s.active_entity = None
 		s.active_entity_room = None
