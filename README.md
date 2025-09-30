@@ -217,11 +217,3 @@ Pyxel-Text-Adventure/
 		world_data.json
 		encounters.py
 ```
-
-## Problemas conhecidos e dicas
-- Para atravessar o `rio` até `end`, tenha o `remo` no inventário.
-- Fugir pode falhar (50%). Guarde energia para habilidades.
-- Para depurar encontros, use `encontros` e `forcar encontro <id>`.
-
----
-Divirta-se explorando, lutando e evoluindo no mundo de CORPO SECO!
