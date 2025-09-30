@@ -135,7 +135,7 @@ class GameRenderer:
 			px.rect(x, y, w, h, 1)
 			px.rect(x, y + h - 30, w, 30, 3)
 			self.draw_pixel_text(cx - 60, base - 50, "Continua...", 10, scale=3)
-			self.draw_pixel_text(cx - 40, base - 20, "Feito por Joao Melo", 7, scale=1)
+			self.draw_pixel_text(cx - 50, base - 20, "Feito por Joao Melo", 7, scale=1)
 			# Normalmente não há entities em 'end', mas deixado como está.
 
 	def _draw_room_items(self, x, y, w, h, items_in_room):

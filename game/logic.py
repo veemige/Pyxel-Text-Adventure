@@ -462,7 +462,7 @@ class GameLogic:
 			self.s.active_entity = None
 			self.s.active_entity_room = None
 		s = self.s
-		if new_room == "interior da caverna" and "tocha" not in s.effects:
+		if new_room == "caverna" and "tocha" not in s.effects:
 			s.say("Esta muito escuro para entrar.")
 			return
 		if new_room == "end" and "remo" not in s.char.inventory["utensilios"]:
@@ -748,8 +748,12 @@ class GameLogic:
 		p_def = s.char.status["defesa"]
 		dmg = max(1, e_atk - p_def)
 		if s.player_status.get("guard", 0) > 0:
-			red = dmg // 2
-			dmg = max(0, dmg - red)
+			# Reduz o dano em ~50%, arredondando para cima, com reducao minima de 1
+			red = max(1, (dmg + 1) // 2)
+			new_dmg = max(0, dmg - red)
+			if new_dmg < dmg:
+				s.say(f"Voce bloqueia parte do golpe (-{dmg - new_dmg}).")
+			dmg = new_dmg
 			s.player_status["guard"] -= 1
 			if s.player_status["guard"] <= 0:
 				del s.player_status["guard"]
