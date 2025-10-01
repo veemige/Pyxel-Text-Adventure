@@ -394,16 +394,25 @@ class GameRenderer:
 		# capa
 		px.tri(cx - 18, base - 10, cx, base - 30, cx + 18, base - 10, 2)
 		# tronco
-		px.rect(cx - 10, base - 24, 20, 16, 2)
-		px.rectb(cx - 10, base - 24, 20, 16, 0)
+		# centralizado no eixo X (largura 10)
+		px.rect(cx - 5, base - 24, 10, 16, 4)
+		px.rectb(cx - 5, base - 24, 10, 16, 15)
 		# cabeça
 		px.circ(cx, base - 28, 5, 7)
-		# “coroa”
-		px.rect(cx - 8, base - 33, 16, 2, 8)
-		px.tri(cx - 6, base - 33, cx - 4, base - 38, cx - 2, base - 33, 8)
-		px.tri(cx + 2, base - 33, cx + 4, base - 38, cx + 6, base - 33, 8)
+		# cabelo
+		px.rect(cx - 5, base - 33, 10, 3, 4)
+		px.rect(cx - 7, base - 30, 2, 3, 4)
+		px.rect(cx + 5, base - 30, 2, 3, 4)
 		# olhos brilhando
 		px.pset(cx - 2, base - 29, 10); px.pset(cx + 2, base - 29, 10)
 		# braços
-		px.rect(cx - 13, base - 22, 3, 10, 2)
-		px.rect(cx + 10, base - 22, 3, 10, 2)
+		# encostados no tronco (3px largura), sem espaço
+		px.rect(cx - 8, base - 22, 3, 10, 15)  # braço esquerdo encostado no tronco
+		px.rect(cx + 5, base - 22, 3, 10, 15)  # braço direito encostado no tronco
+		# pernas
+		# coladas uma na outra, centralizadas sob o tronco
+		px.rect(cx - 4, base - 10, 4, 10, 4)  # perna esquerda
+		px.rect(cx + 0, base - 10, 4, 10, 4)  # perna direita
+		# botas
+		px.rect(cx - 4, base - 2, 4, 2, 0)    # bota esquerda
+		px.rect(cx + 0, base - 2, 4, 2, 0)    # bota direita

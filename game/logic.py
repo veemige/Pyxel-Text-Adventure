@@ -648,7 +648,7 @@ class GameLogic:
 		if not s.in_combat or not s.enemy:
 			return
 		if mode == "leve":
-			hit_chance = 0.95; mult = 0.7; cost = 1
+			hit_chance = 0.95; mult = 0.5; cost = 1
 		elif mode == "pesado":
 			hit_chance = 0.65; mult = 1.8; cost = 3
 		else:

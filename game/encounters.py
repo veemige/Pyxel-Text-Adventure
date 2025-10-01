@@ -48,12 +48,12 @@ ENCOUNTERS = {
             {"item": "dente", "chance": 0.35, "min": 1, "max": 1},
         ],
     },
-    "THALES": {
+    "thales": {
         "type": "enemy",
         "regions": ["caverna"],
         "min_level": 1,
         "weight": 0.01,
-        "enemy": {"name": "THALES", "base_hp": 100, "atk": 50},
+        "enemy": {"name": "thales", "base_hp": 100, "atk": 50},
         "gold_drop": [100, 200],
         "drops": [
             {"item": "camiseta do e-colab", "chance": 1.0, "min": 1, "max": 1}
