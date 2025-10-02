@@ -93,6 +93,13 @@ class Character:
         vr = data.get("visited_rooms", [])
         self.visited_rooms = set(vr)
         inv = data.get("inventory")
+        equipped = data.get("equipped", {})
+        if isinstance(equipped, dict):
+            self.equipped_weapon = equipped.get("arma")
+            self.equipped_armor["head"] = equipped.get("head")
+            self.equipped_armor["body"] = equipped.get("torso")
+            self.equipped_armor["legs"] = equipped.get("legs")
+            self.equipped_armor["feet"] = equipped.get("feet")
         if isinstance(inv, dict):
             # Garante chaves padrao
             self.inventory = {

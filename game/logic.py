@@ -186,7 +186,7 @@ class GameLogic:
 			return
 
 		if cmd in ("ajuda", "help", "?"):
-			s.say("Comandos: olhar | ir <norte/sul/leste/oeste> | pegar <item> | inventario | pontos | atribuir <vida|forca|defesa> <qtd> | limpar | status | salvar")
+			s.say("Comandos: olhar | ir <norte/sul/leste/oeste> | pegar <item> | inventario | equipamentos | atribuir <vida|forca|defesa> <qtd> | limpar | status | salvar")
 			return
 		if cmd in ("olhar", "look", "l"):
 			self.describe_room()
@@ -209,6 +209,20 @@ class GameLogic:
 				s.say("Comuns: " + ", ".join(inv["comuns"]) if inv["comuns"] else "Comuns: vazio")
 			else:
 				s.say("Voce nao carrega nada.")
+			return
+		if cmd in ("equipamentos", "equip", "e"):
+			inv = s.char.inventory
+			eq = s.char.equipped_armor
+			s.say("Equipamentos:")
+			s.say("Arma: " + (s.char.equipped_weapon if s.char.equipped_weapon else "nenhuma"))
+			if eq:
+				parts = ["cabeca", "torso", "pernas", "bracos"]
+				for part in parts:
+					say_part = part.capitalize()
+					say_item = eq.get(part, "nenhum")
+					s.say(f"{say_part}: {say_item}")
+			else:
+				s.say("Nenhuma armadura equipada.")
 			return
 		if cmd in ("visitadas", "visited"):
 			if s.char.visited_rooms:
@@ -423,7 +437,7 @@ class GameLogic:
 				s.say(f"{item} ja esta equipado.")
 				return
 			s.char.equipped_weapon = item
-			if dano > 0:
+			if dano > 0 and s.char.equipped_weapon != item:
 				s.char.status["forca"] += dano
 				s.say(f"Voce equipou  {item}, ganhando +{dano} de forca.")
 			else:
