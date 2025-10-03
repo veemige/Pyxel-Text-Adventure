@@ -1001,5 +1001,4 @@ class GameLogic:
 		s.enemy = None
 		s.active_entity = None
 		s.active_entity_room = None
-		s.say("Você morreu! Pressione ENTER para carregar o último save (ou digite 'carregar').")
-
+		s.say("Voce morreu! Pressione ENTER para carregar o ultimo save (ou digite 'carregar').")
