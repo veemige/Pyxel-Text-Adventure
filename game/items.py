@@ -7,7 +7,7 @@ def load_item_data():
     try:
         with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            # JSON converte tuplas em listas, entao convertemos de volta se necessario.
+            # JSON converte tuplas em listas, entao converte de volta se necessário
             positions = data.get("positions", {})
             for room, items in positions.items():
                 for item, pos in items.items():
